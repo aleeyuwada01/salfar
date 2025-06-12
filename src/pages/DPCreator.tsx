@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Upload, Download, Share2, RotateCcw, Move, Crop, Eye, Settings, Image as ImageIcon, Users, TrendingUp } from 'lucide-react';
 
 interface DPPosition {
@@ -19,6 +19,8 @@ interface Campaign {
   isActive: boolean;
 }
 
+const STORAGE_KEY = 'salfar_dp_campaigns';
+
 export const DPCreator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'user' | 'admin'>('user');
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -37,41 +39,66 @@ export const DPCreator: React.FC = () => {
   });
   const [campaignName, setCampaignName] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const adminFileInputRef = useRef<HTMLInputElement>(null);
+  const flyerRef = useRef<HTMLImageElement>(null);
 
-  // Mock campaigns data
-  const [campaigns, setCampaigns] = useState<Campaign[]>([
-    {
-      id: '1',
-      name: 'SCD Awareness Month 2025',
-      flyerUrl: 'https://images.pexels.com/photos/6129044/pexels-photo-6129044.jpeg?auto=compress&cs=tinysrgb&w=800',
-      dpPosition: { x: 300, y: 50, width: 120, height: 120, shape: 'circle' },
-      downloads: 1247,
-      shares: 892,
-      isActive: true
-    },
-    {
-      id: '2',
-      name: 'Warriors Support Campaign',
-      flyerUrl: 'https://images.pexels.com/photos/8363028/pexels-photo-8363028.jpeg?auto=compress&cs=tinysrgb&w=800',
-      dpPosition: { x: 50, y: 200, width: 100, height: 100, shape: 'rounded' },
-      downloads: 856,
-      shares: 634,
-      isActive: true
-    },
-    {
-      id: '3',
-      name: 'Medical Aid Drive',
-      flyerUrl: 'https://images.pexels.com/photos/5427674/pexels-photo-5427674.jpeg?auto=compress&cs=tinysrgb&w=800',
-      dpPosition: { x: 200, y: 300, width: 110, height: 110, shape: 'square' },
-      downloads: 423,
-      shares: 298,
-      isActive: false
+  // Load campaigns from localStorage
+  const loadCampaigns = (): Campaign[] => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('Error loading campaigns from localStorage:', error);
     }
-  ]);
+    
+    // Default campaigns if nothing in localStorage
+    return [
+      {
+        id: '1',
+        name: 'SCD Awareness Month 2025',
+        flyerUrl: 'https://images.pexels.com/photos/6129044/pexels-photo-6129044.jpeg?auto=compress&cs=tinysrgb&w=800',
+        dpPosition: { x: 300, y: 50, width: 120, height: 120, shape: 'circle' },
+        downloads: 1247,
+        shares: 892,
+        isActive: true
+      },
+      {
+        id: '2',
+        name: 'Warriors Support Campaign',
+        flyerUrl: 'https://images.pexels.com/photos/8363028/pexels-photo-8363028.jpeg?auto=compress&cs=tinysrgb&w=800',
+        dpPosition: { x: 50, y: 200, width: 100, height: 100, shape: 'rounded' },
+        downloads: 856,
+        shares: 634,
+        isActive: true
+      },
+      {
+        id: '3',
+        name: 'Medical Aid Drive',
+        flyerUrl: 'https://images.pexels.com/photos/5427674/pexels-photo-5427674.jpeg?auto=compress&cs=tinysrgb&w=800',
+        dpPosition: { x: 200, y: 300, width: 110, height: 110, shape: 'square' },
+        downloads: 423,
+        shares: 298,
+        isActive: false
+      }
+    ];
+  };
+
+  const [campaigns, setCampaigns] = useState<Campaign[]>(loadCampaigns);
+
+  // Save campaigns to localStorage whenever campaigns change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
+    } catch (error) {
+      console.error('Error saving campaigns to localStorage:', error);
+    }
+  }, [campaigns]);
 
   const handleUserImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -90,6 +117,14 @@ export const DPCreator: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setAdminFlyer(e.target?.result as string);
+        // Reset position when new flyer is uploaded
+        setDpPosition({
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          shape: 'circle'
+        });
       };
       reader.readAsDataURL(file);
     }
@@ -246,7 +281,7 @@ export const DPCreator: React.FC = () => {
       id: Date.now().toString(),
       name: campaignName,
       flyerUrl: adminFlyer,
-      dpPosition: dpPosition,
+      dpPosition: { ...dpPosition }, // Create a copy to avoid reference issues
       downloads: 0,
       shares: 0,
       isActive: true
@@ -261,6 +296,17 @@ export const DPCreator: React.FC = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (activeTab !== 'admin' || !adminFlyer) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Calculate offset from mouse position to top-left of DP area
+    setDragOffset({
+      x: x - dpPosition.x,
+      y: y - dpPosition.y
+    });
+    
     setIsDragging(true);
   };
 
@@ -271,11 +317,25 @@ export const DPCreator: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    setDpPosition(prev => ({ ...prev, x: x - prev.width/2, y: y - prev.height/2 }));
+    // Update position using the drag offset to maintain smooth dragging
+    setDpPosition(prev => ({ 
+      ...prev, 
+      x: Math.max(0, Math.min(x - dragOffset.x, rect.width - prev.width)),
+      y: Math.max(0, Math.min(y - dragOffset.y, rect.height - prev.height))
+    }));
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // Handle dimension changes without affecting position
+  const handleDimensionChange = (dimension: 'width' | 'height', value: number) => {
+    setDpPosition(prev => ({
+      ...prev,
+      [dimension]: Math.max(10, value) // Minimum size of 10px
+    }));
   };
 
   React.useEffect(() => {
@@ -584,21 +644,25 @@ export const DPCreator: React.FC = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Width</label>
+                          <label className="block text-xs text-gray-600 mb-1">Width (px)</label>
                           <input
                             type="number"
+                            min="10"
+                            max="500"
                             value={dpPosition.width}
-                            onChange={(e) => setDpPosition(prev => ({ ...prev, width: parseInt(e.target.value) }))}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            onChange={(e) => handleDimensionChange('width', parseInt(e.target.value) || 10)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
                         </div>
                         <div>
-                          <label className="block text-xs text-gray-600 mb-1">Height</label>
+                          <label className="block text-xs text-gray-600 mb-1">Height (px)</label>
                           <input
                             type="number"
+                            min="10"
+                            max="500"
                             value={dpPosition.height}
-                            onChange={(e) => setDpPosition(prev => ({ ...prev, height: parseInt(e.target.value) }))}
-                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            onChange={(e) => handleDimensionChange('height', parseInt(e.target.value) || 10)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
                         </div>
                       </div>
@@ -608,12 +672,35 @@ export const DPCreator: React.FC = () => {
                         <select
                           value={dpPosition.shape}
                           onChange={(e) => setDpPosition(prev => ({ ...prev, shape: e.target.value as 'circle' | 'square' | 'rounded' }))}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                         >
                           <option value="circle">Circle</option>
                           <option value="square">Square</option>
                           <option value="rounded">Rounded Square</option>
                         </select>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">X Position</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={Math.round(dpPosition.x)}
+                            onChange={(e) => setDpPosition(prev => ({ ...prev, x: parseInt(e.target.value) || 0 }))}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-600 mb-1">Y Position</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={Math.round(dpPosition.y)}
+                            onChange={(e) => setDpPosition(prev => ({ ...prev, y: parseInt(e.target.value) || 0 }))}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -632,34 +719,49 @@ export const DPCreator: React.FC = () => {
               {adminFlyer && (
                 <div className="bg-white rounded-lg shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-900 mb-6">Position DP Area</h3>
-                  <p className="text-gray-600 mb-4">Drag the overlay to position where the profile picture should appear</p>
+                  <p className="text-gray-600 mb-4">
+                    Drag the overlay to position where the profile picture should appear, or use the input fields for precise positioning.
+                  </p>
                   
                   <div 
-                    className="relative border rounded-lg overflow-hidden cursor-crosshair"
+                    className="relative border rounded-lg overflow-hidden cursor-crosshair select-none"
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    style={{ maxHeight: '400px' }}
                   >
-                    <img src={adminFlyer} alt="Flyer" className="w-full h-auto" />
+                    <img 
+                      ref={flyerRef}
+                      src={adminFlyer} 
+                      alt="Flyer" 
+                      className="w-full h-auto block"
+                      draggable={false}
+                    />
                     
                     {/* DP Position Overlay */}
                     <div
-                      className={`absolute border-2 border-google-red bg-google-red bg-opacity-20 ${
+                      className={`absolute border-2 border-google-red bg-google-red bg-opacity-20 flex items-center justify-center ${
                         dpPosition.shape === 'circle' ? 'rounded-full' : 
                         dpPosition.shape === 'rounded' ? 'rounded-lg' : ''
-                      } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                      } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-all duration-150`}
                       style={{
-                        left: dpPosition.x,
-                        top: dpPosition.y,
-                        width: dpPosition.width,
-                        height: dpPosition.height,
+                        left: `${dpPosition.x}px`,
+                        top: `${dpPosition.y}px`,
+                        width: `${dpPosition.width}px`,
+                        height: `${dpPosition.height}px`,
+                        transform: isDragging ? 'scale(1.05)' : 'scale(1)',
+                        boxShadow: isDragging ? '0 4px 12px rgba(234, 67, 53, 0.3)' : 'none'
                       }}
                     >
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Move className="h-6 w-6 text-google-red" />
-                      </div>
+                      <Move className="h-6 w-6 text-google-red pointer-events-none" />
                     </div>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    <strong>Position:</strong> X: {Math.round(dpPosition.x)}px, Y: {Math.round(dpPosition.y)}px<br />
+                    <strong>Size:</strong> {dpPosition.width}px × {dpPosition.height}px<br />
+                    <strong>Shape:</strong> {dpPosition.shape}
                   </div>
                 </div>
               )}
@@ -702,6 +804,9 @@ export const DPCreator: React.FC = () => {
                               />
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
+                                <div className="text-xs text-gray-500">
+                                  {campaign.dpPosition.width}×{campaign.dpPosition.height} {campaign.dpPosition.shape}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -739,9 +844,19 @@ export const DPCreator: React.FC = () => {
                                 campaign.isActive 
                                   ? 'text-red-600 hover:text-red-900' 
                                   : 'text-green-600 hover:text-green-900'
-                              }`}
+                              } mr-4`}
                             >
                               {campaign.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this campaign?')) {
+                                  setCampaigns(prev => prev.filter(c => c.id !== campaign.id));
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-900"
+                            >
+                              Delete
                             </button>
                           </td>
                         </tr>
