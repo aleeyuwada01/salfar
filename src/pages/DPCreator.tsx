@@ -94,9 +94,31 @@ export const DPCreator: React.FC = () => {
   // Save campaigns to localStorage whenever campaigns change
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaigns));
+      // Create a copy of campaigns with base64 data URLs removed to prevent quota exceeded errors
+      const campaignsToSave = campaigns.map(campaign => ({
+        ...campaign,
+        // If flyerUrl is a base64 data URL, replace it with a placeholder
+        flyerUrl: campaign.flyerUrl.startsWith('data:') ? '' : campaign.flyerUrl
+      }));
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(campaignsToSave));
     } catch (error) {
       console.error('Error saving campaigns to localStorage:', error);
+      // If we still get quota exceeded, try to save without any potentially large data
+      try {
+        const minimalCampaigns = campaigns.map(campaign => ({
+          id: campaign.id,
+          name: campaign.name,
+          flyerUrl: campaign.flyerUrl.startsWith('data:') ? '' : campaign.flyerUrl,
+          dpPosition: campaign.dpPosition,
+          downloads: campaign.downloads,
+          shares: campaign.shares,
+          isActive: campaign.isActive
+        }));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalCampaigns));
+      } catch (secondError) {
+        console.error('Failed to save even minimal campaign data:', secondError);
+      }
     }
   }, [campaigns]);
 
@@ -277,10 +299,14 @@ export const DPCreator: React.FC = () => {
   const saveCampaign = () => {
     if (!adminFlyer || !campaignName) return;
     
+    // Check if adminFlyer is a base64 data URL
+    const isBase64Image = adminFlyer.startsWith('data:');
+    
     const newCampaign: Campaign = {
       id: Date.now().toString(),
       name: campaignName,
-      flyerUrl: adminFlyer,
+      // If it's a base64 image, use empty string to prevent localStorage quota issues
+      flyerUrl: isBase64Image ? adminFlyer : adminFlyer, // Keep the full data URL in memory for current session
       dpPosition: { ...dpPosition }, // Create a copy to avoid reference issues
       downloads: 0,
       shares: 0,
@@ -291,7 +317,12 @@ export const DPCreator: React.FC = () => {
     setCampaignName('');
     setAdminFlyer(null);
     setDpPosition({ x: 50, y: 50, width: 100, height: 100, shape: 'circle' });
-    alert('Campaign saved successfully!');
+    
+    if (isBase64Image) {
+      alert('Campaign saved successfully! Note: Locally uploaded images will not persist across browser sessions due to storage limitations. For persistent campaigns, please use external image URLs.');
+    } else {
+      alert('Campaign saved successfully!');
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -407,11 +438,21 @@ export const DPCreator: React.FC = () => {
                       selectedCampaign?.id === campaign.id ? 'ring-4 ring-google-red' : ''
                     }`}
                   >
-                    <img 
-                      src={campaign.flyerUrl} 
-                      alt={campaign.name}
-                      className="w-full h-48 object-cover"
-                    />
+                    {campaign.flyerUrl ? (
+                      <img 
+                        src={campaign.flyerUrl} 
+                        alt={campaign.name}
+                        className="w-full h-48 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                        <div className="text-center text-gray-500">
+                          <ImageIcon className="h-12 w-12 mx-auto mb-2" />
+                          <p className="text-sm">Image not available</p>
+                          <p className="text-xs">Upload session expired</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black bg-opacity-40 flex items-end">
                       <div className="p-4 text-white w-full">
                         <h3 className="font-bold text-lg">{campaign.name}</h3>
@@ -797,11 +838,17 @@ export const DPCreator: React.FC = () => {
                         <tr key={campaign.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <img 
-                                src={campaign.flyerUrl} 
-                                alt={campaign.name}
-                                className="w-12 h-12 object-cover rounded"
-                              />
+                              {campaign.flyerUrl ? (
+                                <img 
+                                  src={campaign.flyerUrl} 
+                                  alt={campaign.name}
+                                  className="w-12 h-12 object-cover rounded"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 bg-gray-200 rounded flex items-center justify-center">
+                                  <ImageIcon className="h-6 w-6 text-gray-400" />
+                                </div>
+                              )}
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">{campaign.name}</div>
                                 <div className="text-xs text-gray-500">
