@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Heart, MapPin, TrendingUp, Users, Shield, Calendar, PieChart, ArrowRight } from 'lucide-react';
+import { UserPlus, Heart, MapPin, TrendingUp, Users, Shield, Calendar, PieChart, ArrowRight, Image as ImageIcon } from 'lucide-react';
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
@@ -116,6 +116,13 @@ export const Home: React.FC = () => {
             >
               <UserPlus className="h-5 w-5" />
               <span>Register New Warrior</span>
+            </Link>
+            <Link
+              to="/dp-creator"
+              className="bg-google-blue text-white px-8 py-4 rounded-full font-semibold text-lg hover:bg-blue-600 transition-all transform hover:scale-105 flex items-center space-x-2"
+            >
+              <ImageIcon className="h-5 w-5" />
+              <span>Create Support DP</span>
             </Link>
             <Link
               to="/get-involved"
