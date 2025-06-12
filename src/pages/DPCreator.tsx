@@ -30,7 +30,7 @@ export const DPCreator: React.FC = () => {
   
   // Admin states
   const [adminFlyer, setAdminFlyer] = useState<string | null>(null);
-  const [dpPosition, setDpPosition] = useState<DPPosition>({
+  const [adminDpPosition, setAdminDpPosition] = useState<DPPosition>({
     x: 50,
     y: 50,
     width: 100,
@@ -140,7 +140,7 @@ export const DPCreator: React.FC = () => {
       reader.onload = (e) => {
         setAdminFlyer(e.target?.result as string);
         // Reset position when new flyer is uploaded
-        setDpPosition({
+        setAdminDpPosition({
           x: 50,
           y: 50,
           width: 100,
@@ -178,6 +178,7 @@ export const DPCreator: React.FC = () => {
       // Load user image
       const userImg = new Image();
       userImg.onload = () => {
+        // Use the selected campaign's DP position, not the admin position
         const pos = selectedCampaign.dpPosition;
         
         // Calculate scaling to maintain aspect ratio
@@ -307,7 +308,7 @@ export const DPCreator: React.FC = () => {
       name: campaignName,
       // If it's a base64 image, use empty string to prevent localStorage quota issues
       flyerUrl: isBase64Image ? adminFlyer : adminFlyer, // Keep the full data URL in memory for current session
-      dpPosition: { ...dpPosition }, // Create a copy to avoid reference issues
+      dpPosition: { ...adminDpPosition }, // Create a copy to avoid reference issues
       downloads: 0,
       shares: 0,
       isActive: true
@@ -316,7 +317,7 @@ export const DPCreator: React.FC = () => {
     setCampaigns(prev => [...prev, newCampaign]);
     setCampaignName('');
     setAdminFlyer(null);
-    setDpPosition({ x: 50, y: 50, width: 100, height: 100, shape: 'circle' });
+    setAdminDpPosition({ x: 50, y: 50, width: 100, height: 100, shape: 'circle' });
     
     if (isBase64Image) {
       alert('Campaign saved successfully! Note: Locally uploaded images will not persist across browser sessions due to storage limitations. For persistent campaigns, please use external image URLs.');
@@ -334,8 +335,8 @@ export const DPCreator: React.FC = () => {
     
     // Calculate offset from mouse position to top-left of DP area
     setDragOffset({
-      x: x - dpPosition.x,
-      y: y - dpPosition.y
+      x: x - adminDpPosition.x,
+      y: y - adminDpPosition.y
     });
     
     setIsDragging(true);
@@ -349,7 +350,7 @@ export const DPCreator: React.FC = () => {
     const y = e.clientY - rect.top;
     
     // Update position using the drag offset to maintain smooth dragging
-    setDpPosition(prev => ({ 
+    setAdminDpPosition(prev => ({ 
       ...prev, 
       x: Math.max(0, Math.min(x - dragOffset.x, rect.width - prev.width)),
       y: Math.max(0, Math.min(y - dragOffset.y, rect.height - prev.height))
@@ -363,7 +364,7 @@ export const DPCreator: React.FC = () => {
 
   // Handle dimension changes without affecting position
   const handleDimensionChange = (dimension: 'width' | 'height', value: number) => {
-    setDpPosition(prev => ({
+    setAdminDpPosition(prev => ({
       ...prev,
       [dimension]: Math.max(10, value) // Minimum size of 10px
     }));
@@ -525,6 +526,18 @@ export const DPCreator: React.FC = () => {
                         <RotateCcw className="h-4 w-4" />
                         <span>Reset Photo</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Show selected campaign DP position info */}
+                  {selectedCampaign && (
+                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold text-gray-900 mb-2">Campaign Settings</h4>
+                      <div className="text-sm text-gray-600 space-y-1">
+                        <div>Position: {selectedCampaign.dpPosition.x}px, {selectedCampaign.dpPosition.y}px</div>
+                        <div>Size: {selectedCampaign.dpPosition.width}px × {selectedCampaign.dpPosition.height}px</div>
+                        <div>Shape: {selectedCampaign.dpPosition.shape}</div>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -690,7 +703,7 @@ export const DPCreator: React.FC = () => {
                             type="number"
                             min="10"
                             max="500"
-                            value={dpPosition.width}
+                            value={adminDpPosition.width}
                             onChange={(e) => handleDimensionChange('width', parseInt(e.target.value) || 10)}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
@@ -701,7 +714,7 @@ export const DPCreator: React.FC = () => {
                             type="number"
                             min="10"
                             max="500"
-                            value={dpPosition.height}
+                            value={adminDpPosition.height}
                             onChange={(e) => handleDimensionChange('height', parseInt(e.target.value) || 10)}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
@@ -711,8 +724,8 @@ export const DPCreator: React.FC = () => {
                       <div>
                         <label className="block text-xs text-gray-600 mb-1">Shape</label>
                         <select
-                          value={dpPosition.shape}
-                          onChange={(e) => setDpPosition(prev => ({ ...prev, shape: e.target.value as 'circle' | 'square' | 'rounded' }))}
+                          value={adminDpPosition.shape}
+                          onChange={(e) => setAdminDpPosition(prev => ({ ...prev, shape: e.target.value as 'circle' | 'square' | 'rounded' }))}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                         >
                           <option value="circle">Circle</option>
@@ -727,8 +740,8 @@ export const DPCreator: React.FC = () => {
                           <input
                             type="number"
                             min="0"
-                            value={Math.round(dpPosition.x)}
-                            onChange={(e) => setDpPosition(prev => ({ ...prev, x: parseInt(e.target.value) || 0 }))}
+                            value={Math.round(adminDpPosition.x)}
+                            onChange={(e) => setAdminDpPosition(prev => ({ ...prev, x: parseInt(e.target.value) || 0 }))}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
                         </div>
@@ -737,8 +750,8 @@ export const DPCreator: React.FC = () => {
                           <input
                             type="number"
                             min="0"
-                            value={Math.round(dpPosition.y)}
-                            onChange={(e) => setDpPosition(prev => ({ ...prev, y: parseInt(e.target.value) || 0 }))}
+                            value={Math.round(adminDpPosition.y)}
+                            onChange={(e) => setAdminDpPosition(prev => ({ ...prev, y: parseInt(e.target.value) || 0 }))}
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-google-red"
                           />
                         </div>
@@ -783,14 +796,14 @@ export const DPCreator: React.FC = () => {
                     {/* DP Position Overlay */}
                     <div
                       className={`absolute border-2 border-google-red bg-google-red bg-opacity-20 flex items-center justify-center ${
-                        dpPosition.shape === 'circle' ? 'rounded-full' : 
-                        dpPosition.shape === 'rounded' ? 'rounded-lg' : ''
+                        adminDpPosition.shape === 'circle' ? 'rounded-full' : 
+                        adminDpPosition.shape === 'rounded' ? 'rounded-lg' : ''
                       } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} transition-all duration-150`}
                       style={{
-                        left: `${dpPosition.x}px`,
-                        top: `${dpPosition.y}px`,
-                        width: `${dpPosition.width}px`,
-                        height: `${dpPosition.height}px`,
+                        left: `${adminDpPosition.x}px`,
+                        top: `${adminDpPosition.y}px`,
+                        width: `${adminDpPosition.width}px`,
+                        height: `${adminDpPosition.height}px`,
                         transform: isDragging ? 'scale(1.05)' : 'scale(1)',
                         boxShadow: isDragging ? '0 4px 12px rgba(234, 67, 53, 0.3)' : 'none'
                       }}
@@ -800,9 +813,9 @@ export const DPCreator: React.FC = () => {
                   </div>
                   
                   <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                    <strong>Position:</strong> X: {Math.round(dpPosition.x)}px, Y: {Math.round(dpPosition.y)}px<br />
-                    <strong>Size:</strong> {dpPosition.width}px × {dpPosition.height}px<br />
-                    <strong>Shape:</strong> {dpPosition.shape}
+                    <strong>Position:</strong> X: {Math.round(adminDpPosition.x)}px, Y: {Math.round(adminDpPosition.y)}px<br />
+                    <strong>Size:</strong> {adminDpPosition.width}px × {adminDpPosition.height}px<br />
+                    <strong>Shape:</strong> {adminDpPosition.shape}
                   </div>
                 </div>
               )}
