@@ -201,70 +201,112 @@ export const DPCreator: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Load flyer image
-    const flyerImg = new Image();
-    flyerImg.crossOrigin = 'anonymous';
-    
-    flyerImg.onload = () => {
+    try {
+      // Load flyer image
+      const flyerImg = new Image();
+      flyerImg.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        flyerImg.onload = resolve;
+        flyerImg.onerror = reject;
+        flyerImg.src = selectedCampaign.flyerUrl;
+      });
+
       // Set canvas size to match flyer
       canvas.width = flyerImg.width;
       canvas.height = flyerImg.height;
       
-      // Draw flyer
+      // Clear canvas and draw flyer
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(flyerImg, 0, 0);
       
       // Load user image
       const userImg = new Image();
-      userImg.onload = () => {
-        // Use the selected campaign's DP position, not the admin position
-        const pos = selectedCampaign.dpPosition;
-        
-        // Calculate scaling to maintain aspect ratio
-        const scale = Math.min(pos.width / userImg.width, pos.height / userImg.height);
-        const scaledWidth = userImg.width * scale;
-        const scaledHeight = userImg.height * scale;
-        
-        // Center the image in the position
-        const offsetX = (pos.width - scaledWidth) / 2;
-        const offsetY = (pos.height - scaledHeight) / 2;
-        
-        ctx.save();
-        
-        // Create clipping path based on shape
-        if (pos.shape === 'circle') {
-          ctx.beginPath();
-          ctx.arc(pos.x + pos.width/2, pos.y + pos.height/2, pos.width/2, 0, 2 * Math.PI);
-          ctx.clip();
-        } else if (pos.shape === 'rounded') {
-          const radius = 10;
-          ctx.beginPath();
-          ctx.roundRect(pos.x, pos.y, pos.width, pos.height, radius);
-          ctx.clip();
-        } else {
-          ctx.beginPath();
-          ctx.rect(pos.x, pos.y, pos.width, pos.height);
-          ctx.clip();
-        }
-        
-        // Draw user image
-        ctx.drawImage(userImg, pos.x + offsetX, pos.y + offsetY, scaledWidth, scaledHeight);
-        ctx.restore();
-        
-        // Add SALFAR watermark
-        ctx.font = '12px Arial';
-        ctx.fillStyle = 'rgba(234, 67, 53, 0.7)';
-        ctx.fillText('SALFAR.org', canvas.width - 80, canvas.height - 10);
-        
-        // Convert to data URL
-        const dataURL = canvas.toDataURL('image/png', 0.9);
-        setPreviewImage(dataURL);
-        setIsProcessing(false);
+      
+      await new Promise((resolve, reject) => {
+        userImg.onload = resolve;
+        userImg.onerror = reject;
+        userImg.src = userImage;
+      });
+
+      // Get the campaign's DP position settings
+      const pos = selectedCampaign.dpPosition;
+      
+      // Calculate the scale factor between the displayed image and actual image
+      const displayedImg = document.querySelector(`img[src="${selectedCampaign.flyerUrl}"]`) as HTMLImageElement;
+      let scaleX = 1;
+      let scaleY = 1;
+      
+      if (displayedImg) {
+        scaleX = flyerImg.width / displayedImg.clientWidth;
+        scaleY = flyerImg.height / displayedImg.clientHeight;
+      }
+
+      // Apply scaling to position and size
+      const scaledPos = {
+        x: pos.x * scaleX,
+        y: pos.y * scaleY,
+        width: pos.width * scaleX,
+        height: pos.height * scaleY,
+        shape: pos.shape
       };
       
-      userImg.src = userImage;
-    };
-    
-    flyerImg.src = selectedCampaign.flyerUrl;
+      // Calculate scaling to maintain aspect ratio within the DP area
+      const scale = Math.min(scaledPos.width / userImg.width, scaledPos.height / userImg.height);
+      const scaledWidth = userImg.width * scale;
+      const scaledHeight = userImg.height * scale;
+      
+      // Center the image in the DP area
+      const offsetX = (scaledPos.width - scaledWidth) / 2;
+      const offsetY = (scaledPos.height - scaledHeight) / 2;
+      
+      ctx.save();
+      
+      // Create clipping path based on shape
+      ctx.beginPath();
+      if (scaledPos.shape === 'circle') {
+        ctx.arc(
+          scaledPos.x + scaledPos.width / 2, 
+          scaledPos.y + scaledPos.height / 2, 
+          scaledPos.width / 2, 
+          0, 
+          2 * Math.PI
+        );
+      } else if (scaledPos.shape === 'rounded') {
+        const radius = Math.min(scaledPos.width, scaledPos.height) * 0.1;
+        ctx.roundRect(scaledPos.x, scaledPos.y, scaledPos.width, scaledPos.height, radius);
+      } else {
+        ctx.rect(scaledPos.x, scaledPos.y, scaledPos.width, scaledPos.height);
+      }
+      ctx.clip();
+      
+      // Draw user image
+      ctx.drawImage(
+        userImg, 
+        scaledPos.x + offsetX, 
+        scaledPos.y + offsetY, 
+        scaledWidth, 
+        scaledHeight
+      );
+      
+      ctx.restore();
+      
+      // Add SALFAR watermark
+      ctx.font = `${Math.max(12, canvas.width * 0.02)}px Arial`;
+      ctx.fillStyle = 'rgba(234, 67, 53, 0.7)';
+      ctx.textAlign = 'right';
+      ctx.fillText('SALFAR.org', canvas.width - 10, canvas.height - 10);
+      
+      // Convert to data URL
+      const dataURL = canvas.toDataURL('image/png', 0.9);
+      setPreviewImage(dataURL);
+      
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      alert('Error generating preview. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
   }, [selectedCampaign, userImage]);
 
   const downloadImage = () => {
@@ -371,13 +413,18 @@ export const DPCreator: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Calculate offset from mouse position to top-left of DP area
-    setDragOffset({
-      x: x - adminDpPosition.x,
-      y: y - adminDpPosition.y
-    });
-    
-    setIsDragging(true);
+    // Check if click is within the DP area
+    if (x >= adminDpPosition.x && x <= adminDpPosition.x + adminDpPosition.width &&
+        y >= adminDpPosition.y && y <= adminDpPosition.y + adminDpPosition.height) {
+      
+      // Calculate offset from mouse position to top-left of DP area
+      setDragOffset({
+        x: x - adminDpPosition.x,
+        y: y - adminDpPosition.y
+      });
+      
+      setIsDragging(true);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -822,7 +869,7 @@ export const DPCreator: React.FC = () => {
                 <div className="bg-white rounded-lg shadow-lg p-8">
                   <h3 className="text-2xl font-bold text-gray-900 mb-6">Position DP Area</h3>
                   <p className="text-gray-600 mb-4">
-                    Drag the overlay to position where the profile picture should appear, or use the input fields for precise positioning.
+                    Drag the red overlay to position where the profile picture should appear, or use the input fields for precise positioning.
                   </p>
                   
                   <div 
