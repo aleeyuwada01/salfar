@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Share2, Upload, X, Settings, Trash2, Edit3, Eye, Plus, RotateCcw, ZoomIn, ZoomOut, Move, RotateCw, Image as ImageIcon } from 'lucide-react';
+import { Download, Share2, Upload, X, Settings, Trash2, Edit3, Eye, Plus, RotateCcw, ZoomIn, ZoomOut, Move, RotateCw, Image as ImageIcon, Copy, Check } from 'lucide-react';
 
 interface Campaign {
   id: string;
@@ -26,6 +26,7 @@ export const DPCreator: React.FC = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [userImage, setUserImage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const campaignImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -438,20 +439,160 @@ export const DPCreator: React.FC = () => {
   const shareImage = async () => {
     if (!selectedCampaign) return;
     
-    if (navigator.share) {
-      try {
+    setShareStatus('sharing');
+    
+    try {
+      // First try to generate the image as a blob for native sharing
+      if (navigator.share && canvasRef.current) {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          canvas.width = 400;
+          canvas.height = 400;
+
+          // Generate the image on canvas (similar to download function)
+          const generateImageBlob = (): Promise<Blob | null> => {
+            return new Promise((resolve) => {
+              if (selectedCampaign.campaignImage) {
+                const img = new Image();
+                img.onload = () => {
+                  ctx.drawImage(img, 0, 0, 400, 400);
+                  drawUserImageAndResolve();
+                };
+                img.src = selectedCampaign.campaignImage;
+              } else {
+                // Draw template background
+                const template = templates.find(t => t.id === selectedCampaign.template);
+                if (template) {
+                  const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+                  if (template.bgColor.includes('2D5016')) {
+                    gradient.addColorStop(0, '#2D5016');
+                    gradient.addColorStop(1, '#8B4513');
+                  } else if (template.bgColor.includes('EA4335')) {
+                    gradient.addColorStop(0, '#EA4335');
+                    gradient.addColorStop(1, '#FB8C00');
+                  } else {
+                    gradient.addColorStop(0, '#4285F4');
+                    gradient.addColorStop(1, '#34A853');
+                  }
+                  
+                  ctx.fillStyle = gradient;
+                  ctx.fillRect(0, 0, 400, 400);
+                }
+
+                // Draw template content
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('SALFAR SICKLE AID', 200, 50);
+                ctx.fillText('INITIATIVE', 200, 80);
+                
+                ctx.font = '16px Arial';
+                ctx.fillText('Supporting SCD Warriors', 200, 350);
+                ctx.fillText('Across Nigeria', 200, 370);
+
+                drawUserImageAndResolve();
+              }
+
+              function drawUserImageAndResolve() {
+                if (userImage) {
+                  const img = new Image();
+                  img.onload = () => {
+                    ctx.save();
+                    
+                    const centerX = userImageSettings.position.x + userImageSettings.size.width / 2;
+                    const centerY = userImageSettings.position.y + userImageSettings.size.height / 2;
+                    
+                    ctx.translate(centerX, centerY);
+                    ctx.rotate((userImageSettings.rotation * Math.PI) / 180);
+                    
+                    if (selectedCampaign.settings.shape === 'circle') {
+                      ctx.beginPath();
+                      ctx.arc(0, 0, userImageSettings.size.width / 2, 0, 2 * Math.PI);
+                      ctx.clip();
+                    }
+                    
+                    ctx.drawImage(
+                      img,
+                      -userImageSettings.size.width / 2,
+                      -userImageSettings.size.height / 2,
+                      userImageSettings.size.width,
+                      userImageSettings.size.height
+                    );
+                    
+                    ctx.restore();
+                    
+                    canvas.toBlob(resolve, 'image/png');
+                  };
+                  img.src = userImage;
+                } else {
+                  canvas.toBlob(resolve, 'image/png');
+                }
+              }
+            });
+          };
+
+          const blob = await generateImageBlob();
+          
+          if (blob) {
+            const file = new File([blob], `${selectedCampaign.name}-dp.png`, { type: 'image/png' });
+            
+            await navigator.share({
+              title: `${selectedCampaign.name} - SALFAR Support DP`,
+              text: 'Show your support for SCD warriors with SALFAR! 🩸❤️ #SALFARSupport #SCDWarriors #SickleCell',
+              files: [file]
+            });
+            
+            setShareStatus('idle');
+            return;
+          }
+        }
+      }
+      
+      // Fallback: Try sharing just the URL and text
+      if (navigator.share) {
         await navigator.share({
           title: `${selectedCampaign.name} - SALFAR Support DP`,
-          text: 'Show your support for SCD warriors with SALFAR!',
+          text: 'Show your support for SCD warriors with SALFAR! Create your own support DP at: ',
           url: window.location.href
         });
-      } catch (error) {
-        console.log('Error sharing:', error);
+        setShareStatus('idle');
+        return;
       }
-    } else {
-      // Fallback: copy link to clipboard
-      navigator.clipboard.writeText(window.location.href);
-      alert('Link copied to clipboard!');
+      
+      // Final fallback: Copy to clipboard
+      const shareText = `Show your support for SCD warriors with SALFAR! 🩸❤️ 
+
+Create your own support DP at: ${window.location.href}
+
+#SALFARSupport #SCDWarriors #SickleCell`;
+      
+      await navigator.clipboard.writeText(shareText);
+      setShareStatus('copied');
+      
+      // Reset status after 3 seconds
+      setTimeout(() => setShareStatus('idle'), 3000);
+      
+    } catch (error) {
+      console.error('Error sharing:', error);
+      setShareStatus('error');
+      
+      // Try clipboard as final fallback
+      try {
+        const shareText = `Show your support for SCD warriors with SALFAR! 🩸❤️ 
+
+Create your own support DP at: ${window.location.href}
+
+#SALFARSupport #SCDWarriors #SickleCell`;
+        
+        await navigator.clipboard.writeText(shareText);
+        setShareStatus('copied');
+        setTimeout(() => setShareStatus('idle'), 3000);
+      } catch (clipboardError) {
+        console.error('Clipboard fallback failed:', clipboardError);
+        setShareStatus('error');
+        setTimeout(() => setShareStatus('idle'), 3000);
+      }
     }
   };
 
@@ -467,6 +608,39 @@ export const DPCreator: React.FC = () => {
       return {
         background: template?.bgColor || '#EA4335'
       };
+    }
+  };
+
+  const getShareButtonContent = () => {
+    switch (shareStatus) {
+      case 'sharing':
+        return (
+          <>
+            <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+            <span>Sharing...</span>
+          </>
+        );
+      case 'copied':
+        return (
+          <>
+            <Check className="h-5 w-5" />
+            <span>Copied!</span>
+          </>
+        );
+      case 'error':
+        return (
+          <>
+            <X className="h-5 w-5" />
+            <span>Try Again</span>
+          </>
+        );
+      default:
+        return (
+          <>
+            <Share2 className="h-5 w-5" />
+            <span>Share</span>
+          </>
+        );
     }
   };
 
@@ -818,10 +992,16 @@ export const DPCreator: React.FC = () => {
 
                     <button
                       onClick={shareImage}
-                      className="flex items-center justify-center space-x-2 px-6 py-3 bg-google-orange text-white rounded-full hover:bg-orange-600 transition-colors"
+                      disabled={shareStatus === 'sharing'}
+                      className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-full transition-colors ${
+                        shareStatus === 'copied' 
+                          ? 'bg-green-500 text-white' 
+                          : shareStatus === 'error'
+                          ? 'bg-red-500 text-white hover:bg-red-600'
+                          : 'bg-google-orange text-white hover:bg-orange-600'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
-                      <Share2 className="h-5 w-5" />
-                      <span>Share</span>
+                      {getShareButtonContent()}
                     </button>
                   </div>
 
@@ -830,6 +1010,22 @@ export const DPCreator: React.FC = () => {
                       <p className="text-sm text-blue-700">
                         💡 <strong>Tip:</strong> Your photo is saved locally and will persist across page refreshes. 
                         You can drag your photo in the preview to reposition it quickly!
+                      </p>
+                    </div>
+                  )}
+
+                  {shareStatus === 'copied' && (
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                      <p className="text-sm text-green-700">
+                        ✅ <strong>Share link copied!</strong> You can now paste it in your social media posts or messages.
+                      </p>
+                    </div>
+                  )}
+
+                  {shareStatus === 'error' && (
+                    <div className="mt-4 p-3 bg-red-50 rounded-lg">
+                      <p className="text-sm text-red-700">
+                        ❌ <strong>Sharing failed.</strong> You can manually copy the page URL and share it with others.
                       </p>
                     </div>
                   )}
