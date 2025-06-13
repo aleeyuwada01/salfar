@@ -20,6 +20,7 @@ interface Campaign {
 }
 
 const STORAGE_KEY = 'salfar_dp_campaigns';
+const USER_IMAGE_KEY = 'salfar_user_image';
 
 export const DPCreator: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'user' | 'admin'>('user');
@@ -45,6 +46,37 @@ export const DPCreator: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const adminFileInputRef = useRef<HTMLInputElement>(null);
   const flyerRef = useRef<HTMLImageElement>(null);
+
+  // Load user image from localStorage on component mount
+  useEffect(() => {
+    try {
+      const savedUserImage = localStorage.getItem(USER_IMAGE_KEY);
+      if (savedUserImage) {
+        setUserImage(savedUserImage);
+      }
+    } catch (error) {
+      console.error('Error loading user image from localStorage:', error);
+    }
+  }, []);
+
+  // Save user image to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (userImage) {
+        localStorage.setItem(USER_IMAGE_KEY, userImage);
+      } else {
+        localStorage.removeItem(USER_IMAGE_KEY);
+      }
+    } catch (error) {
+      console.error('Error saving user image to localStorage:', error);
+      // If quota exceeded, clear the user image
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        setUserImage(null);
+        localStorage.removeItem(USER_IMAGE_KEY);
+        alert('Storage quota exceeded. Please use a smaller image or clear browser data.');
+      }
+    }
+  }, [userImage]);
 
   // Load campaigns from localStorage
   const loadCampaigns = (): Campaign[] => {
@@ -125,6 +157,12 @@ export const DPCreator: React.FC = () => {
   const handleUserImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (limit to 2MB to prevent localStorage quota issues)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Please select an image smaller than 2MB to ensure it can be saved.');
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (e) => {
         setUserImage(e.target?.result as string);
@@ -370,6 +408,13 @@ export const DPCreator: React.FC = () => {
     }));
   };
 
+  // Clear user image and remove from localStorage
+  const clearUserImage = () => {
+    setUserImage(null);
+    setPreviewImage(null);
+    localStorage.removeItem(USER_IMAGE_KEY);
+  };
+
   React.useEffect(() => {
     if (selectedCampaign && userImage) {
       generatePreview();
@@ -503,7 +548,7 @@ export const DPCreator: React.FC = () => {
                         <Upload className="h-12 w-12 text-gray-400 mx-auto" />
                         <div>
                           <p className="text-lg font-medium text-gray-900">Upload your profile picture</p>
-                          <p className="text-gray-600">PNG, JPG up to 10MB</p>
+                          <p className="text-gray-600">PNG, JPG up to 2MB</p>
                         </div>
                       </div>
                     )}
@@ -520,12 +565,15 @@ export const DPCreator: React.FC = () => {
                   {userImage && (
                     <div className="mt-6 space-y-4">
                       <button
-                        onClick={() => setUserImage(null)}
+                        onClick={clearUserImage}
                         className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
                       >
                         <RotateCcw className="h-4 w-4" />
                         <span>Reset Photo</span>
                       </button>
+                      <div className="text-xs text-gray-500 text-center">
+                        Your photo is saved locally and will persist across page refreshes
+                      </div>
                     </div>
                   )}
 
