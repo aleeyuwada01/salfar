@@ -27,6 +27,7 @@ export const DPCreator: React.FC = () => {
   const [userImage, setUserImage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [shareStatus, setShareStatus] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
+  const [showSharePreview, setShowSharePreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const campaignImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -436,10 +437,15 @@ export const DPCreator: React.FC = () => {
     }
   };
 
-  const shareImage = async () => {
+  const openSharePreview = () => {
+    setShowSharePreview(true);
+  };
+
+  const confirmShare = async () => {
     if (!selectedCampaign) return;
     
     setShareStatus('sharing');
+    setShowSharePreview(false);
     
     try {
       // Check if native sharing is supported first
@@ -536,6 +542,16 @@ Create your own support DP at: ${window.location.href}
           </>
         );
     }
+  };
+
+  const getShareText = () => {
+    if (!selectedCampaign) return '';
+    
+    return `Show your support for SCD warriors with SALFAR! 🩸❤️ 
+
+Create your own support DP at: ${window.location.href}
+
+#SALFARSupport #SCDWarriors #SickleCell`;
   };
 
   return (
@@ -885,7 +901,7 @@ Create your own support DP at: ${window.location.href}
                     </button>
 
                     <button
-                      onClick={shareImage}
+                      onClick={openSharePreview}
                       disabled={shareStatus === 'sharing'}
                       className={`flex items-center justify-center space-x-2 px-6 py-3 rounded-full transition-colors ${
                         shareStatus === 'copied' 
@@ -942,6 +958,103 @@ Create your own support DP at: ${window.location.href}
 
         {/* Hidden Canvas for Download */}
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* Share Preview Modal */}
+        {showSharePreview && selectedCampaign && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-semibold text-gray-900">Share Preview</h3>
+                <button
+                  onClick={() => setShowSharePreview(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {/* Preview of what will be shared */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">This is what will be shared:</h4>
+                  
+                  {/* Mock social media post preview */}
+                  <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-google-red rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">You</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">Your Name</p>
+                        <p className="text-sm text-gray-500">Just now</p>
+                      </div>
+                    </div>
+                    
+                    <div className="whitespace-pre-line text-gray-800 mb-4">
+                      {getShareText()}
+                    </div>
+                    
+                    {/* Link preview card */}
+                    <div className="border border-gray-200 rounded-lg overflow-hidden">
+                      <div className="bg-gradient-to-r from-google-red to-google-orange h-32 flex items-center justify-center">
+                        <div className="text-white text-center">
+                          <h4 className="font-bold text-lg">SALFAR DP Creator</h4>
+                          <p className="text-sm opacity-90">Create Support Display Pictures</p>
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h5 className="font-semibold text-gray-900 mb-1">SALFAR Sickle Aid Initiative - DP Creator</h5>
+                        <p className="text-sm text-gray-600 mb-2">Create personalized display pictures to show your support for SCD warriors across Nigeria.</p>
+                        <p className="text-xs text-gray-500">{window.location.href}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Share options */}
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Share Options:</h4>
+                  <div className="space-y-2 text-sm text-gray-700">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Share link to DP Creator tool</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Include campaign hashtags</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <span>Encourage others to create their own DP</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setShowSharePreview(false)}
+                    className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-full hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmShare}
+                    className="flex-1 px-6 py-3 bg-google-orange text-white rounded-full hover:bg-orange-600 transition-colors flex items-center justify-center space-x-2"
+                  >
+                    <Share2 className="h-5 w-5" />
+                    <span>Share Now</span>
+                  </button>
+                </div>
+
+                {/* Additional info */}
+                <div className="text-xs text-gray-500 text-center">
+                  <p>Your device will determine the best sharing method available (native share, copy to clipboard, etc.)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Create Campaign Modal */}
         {showCreateForm && (
