@@ -53,15 +53,52 @@ export const DPCreator: React.FC = () => {
   useEffect(() => {
     const savedCampaigns = localStorage.getItem('dpCreatorCampaigns');
     if (savedCampaigns) {
-      const parsedCampaigns = JSON.parse(savedCampaigns);
-      setCampaigns(parsedCampaigns);
+      try {
+        const parsedCampaigns = JSON.parse(savedCampaigns);
+        // Load campaign images from separate localStorage entries
+        const campaignsWithImages = parsedCampaigns.map((campaign: Campaign) => {
+          const savedImage = localStorage.getItem(`campaign_${campaign.id}_backgroundImage`);
+          return {
+            ...campaign,
+            campaignImage: savedImage || undefined
+          };
+        });
+        setCampaigns(campaignsWithImages);
+      } catch (error) {
+        console.error('Error loading campaigns from localStorage:', error);
+        setCampaigns([]);
+      }
     }
   }, []);
 
   // Save campaigns to localStorage whenever campaigns change
   useEffect(() => {
     if (campaigns.length > 0) {
-      localStorage.setItem('dpCreatorCampaigns', JSON.stringify(campaigns));
+      try {
+        // Create a copy of campaigns without the campaignImage property to avoid quota issues
+        const campaignsToSave = campaigns.map(({ campaignImage, ...campaign }) => campaign);
+        localStorage.setItem('dpCreatorCampaigns', JSON.stringify(campaignsToSave));
+        
+        // Save campaign images separately
+        campaigns.forEach(campaign => {
+          if (campaign.campaignImage) {
+            try {
+              localStorage.setItem(`campaign_${campaign.id}_backgroundImage`, campaign.campaignImage);
+            } catch (error) {
+              console.warn(`Failed to save background image for campaign ${campaign.id}:`, error);
+              // If we can't save the image, remove it from the campaign
+              campaign.campaignImage = undefined;
+            }
+          }
+        });
+      } catch (error) {
+        console.error('Error saving campaigns to localStorage:', error);
+        // Show user-friendly error message
+        alert('Unable to save campaign data. Your browser storage may be full. Consider deleting some campaigns or clearing browser data.');
+      }
+    } else {
+      // If no campaigns, remove from localStorage
+      localStorage.removeItem('dpCreatorCampaigns');
     }
   }, [campaigns]);
 
@@ -79,7 +116,17 @@ export const DPCreator: React.FC = () => {
       }
       
       if (savedSettings) {
-        setUserImageSettings(JSON.parse(savedSettings));
+        try {
+          setUserImageSettings(JSON.parse(savedSettings));
+        } catch (error) {
+          console.error('Error parsing user image settings:', error);
+          // Reset to campaign defaults
+          setUserImageSettings({
+            position: { x: selectedCampaign.settings.position.x, y: selectedCampaign.settings.position.y },
+            size: { width: selectedCampaign.settings.size.width, height: selectedCampaign.settings.size.height },
+            rotation: 0
+          });
+        }
       } else {
         // Reset to campaign defaults
         setUserImageSettings({
@@ -94,8 +141,13 @@ export const DPCreator: React.FC = () => {
   // Save user image and settings to localStorage
   const saveUserImageData = (image: string, settings: any) => {
     if (selectedCampaign) {
-      localStorage.setItem(`campaign_${selectedCampaign.id}_userImage`, image);
-      localStorage.setItem(`campaign_${selectedCampaign.id}_userImageSettings`, JSON.stringify(settings));
+      try {
+        localStorage.setItem(`campaign_${selectedCampaign.id}_userImage`, image);
+        localStorage.setItem(`campaign_${selectedCampaign.id}_userImageSettings`, JSON.stringify(settings));
+      } catch (error) {
+        console.warn('Failed to save user image data:', error);
+        alert('Unable to save your photo. Your browser storage may be full.');
+      }
     }
   };
 
@@ -123,6 +175,12 @@ export const DPCreator: React.FC = () => {
   const handleCampaignImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (limit to 2MB to avoid localStorage issues)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image file is too large. Please choose an image smaller than 2MB.');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         const imageData = e.target?.result as string;
@@ -168,19 +226,12 @@ export const DPCreator: React.FC = () => {
     // Remove associated user data from localStorage
     localStorage.removeItem(`campaign_${campaignId}_userImage`);
     localStorage.removeItem(`campaign_${campaignId}_userImageSettings`);
+    localStorage.removeItem(`campaign_${campaignId}_backgroundImage`);
     
     // If this was the selected campaign, clear selection
     if (selectedCampaign?.id === campaignId) {
       setSelectedCampaign(null);
       setUserImage(null);
-    }
-    
-    // Update campaigns in localStorage
-    const updatedCampaigns = campaigns.filter(c => c.id !== campaignId);
-    if (updatedCampaigns.length > 0) {
-      localStorage.setItem('dpCreatorCampaigns', JSON.stringify(updatedCampaigns));
-    } else {
-      localStorage.removeItem('dpCreatorCampaigns');
     }
     
     setShowDeleteConfirm(null);
@@ -189,6 +240,12 @@ export const DPCreator: React.FC = () => {
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Check file size (limit to 1MB for user images)
+      if (file.size > 1024 * 1024) {
+        alert('Image file is too large. Please choose an image smaller than 1MB.');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         const imageData = e.target?.result as string;
@@ -863,6 +920,9 @@ export const DPCreator: React.FC = () => {
                         Remove Image
                       </button>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Maximum file size: 2MB. Large images may not persist across sessions due to browser storage limits.
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
