@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Download, Share2, Upload, X, Settings, Trash2, Edit3, Eye, Plus, RotateCcw, ZoomIn, ZoomOut, Move, RotateCw } from 'lucide-react';
+import { Download, Share2, Upload, X, Settings, Trash2, Edit3, Eye, Plus, RotateCcw, ZoomIn, ZoomOut, Move, RotateCw, Image as ImageIcon } from 'lucide-react';
 
 interface Campaign {
   id: string;
   name: string;
   template: string;
+  campaignImage?: string; // New field for campaign background image
   settings: {
     position: { x: number; y: number };
     size: { width: number; height: number };
@@ -26,6 +27,7 @@ export const DPCreator: React.FC = () => {
   const [userImage, setUserImage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const campaignImageInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -41,6 +43,7 @@ export const DPCreator: React.FC = () => {
   const [newCampaign, setNewCampaign] = useState({
     name: '',
     template: 'template1',
+    campaignImage: null as string | null,
     position: { x: 150, y: 100 },
     size: { width: 150, height: 150 },
     shape: 'circle' as 'circle' | 'square'
@@ -117,11 +120,24 @@ export const DPCreator: React.FC = () => {
     }
   ];
 
+  const handleCampaignImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const imageData = e.target?.result as string;
+        setNewCampaign({ ...newCampaign, campaignImage: imageData });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const createCampaign = () => {
     const campaign: Campaign = {
       id: Date.now().toString(),
       name: newCampaign.name,
       template: newCampaign.template,
+      campaignImage: newCampaign.campaignImage || undefined,
       settings: {
         position: newCampaign.position,
         size: newCampaign.size,
@@ -138,6 +154,7 @@ export const DPCreator: React.FC = () => {
     setNewCampaign({
       name: '',
       template: 'template1',
+      campaignImage: null,
       position: { x: 150, y: 100 },
       size: { width: 150, height: 150 },
       shape: 'circle'
@@ -271,79 +288,93 @@ export const DPCreator: React.FC = () => {
     canvas.width = 400;
     canvas.height = 400;
 
-    // Draw template background
-    const template = templates.find(t => t.id === selectedCampaign.template);
-    if (template) {
-      // Create gradient background
-      const gradient = ctx.createLinearGradient(0, 0, 400, 400);
-      if (template.bgColor.includes('2D5016')) {
-        gradient.addColorStop(0, '#2D5016');
-        gradient.addColorStop(1, '#8B4513');
-      } else if (template.bgColor.includes('EA4335')) {
-        gradient.addColorStop(0, '#EA4335');
-        gradient.addColorStop(1, '#FB8C00');
-      } else {
-        gradient.addColorStop(0, '#4285F4');
-        gradient.addColorStop(1, '#34A853');
-      }
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 400, 400);
-    }
-
-    // Draw template content
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('SALFAR SICKLE AID', 200, 50);
-    ctx.fillText('INITIATIVE', 200, 80);
-    
-    ctx.font = '16px Arial';
-    ctx.fillText('Supporting SCD Warriors', 200, 350);
-    ctx.fillText('Across Nigeria', 200, 370);
-
-    // Draw user image if available
-    if (userImage) {
+    // Draw background
+    if (selectedCampaign.campaignImage) {
+      // Use uploaded campaign image
       const img = new Image();
       img.onload = () => {
-        ctx.save();
-        
-        // Apply transformations
-        const centerX = userImageSettings.position.x + userImageSettings.size.width / 2;
-        const centerY = userImageSettings.position.y + userImageSettings.size.height / 2;
-        
-        ctx.translate(centerX, centerY);
-        ctx.rotate((userImageSettings.rotation * Math.PI) / 180);
-        
-        if (selectedCampaign.settings.shape === 'circle') {
-          ctx.beginPath();
-          ctx.arc(0, 0, userImageSettings.size.width / 2, 0, 2 * Math.PI);
-          ctx.clip();
+        ctx.drawImage(img, 0, 0, 400, 400);
+        drawUserImageOnCanvas(ctx);
+      };
+      img.src = selectedCampaign.campaignImage;
+    } else {
+      // Use template background
+      const template = templates.find(t => t.id === selectedCampaign.template);
+      if (template) {
+        // Create gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 400, 400);
+        if (template.bgColor.includes('2D5016')) {
+          gradient.addColorStop(0, '#2D5016');
+          gradient.addColorStop(1, '#8B4513');
+        } else if (template.bgColor.includes('EA4335')) {
+          gradient.addColorStop(0, '#EA4335');
+          gradient.addColorStop(1, '#FB8C00');
+        } else {
+          gradient.addColorStop(0, '#4285F4');
+          gradient.addColorStop(1, '#34A853');
         }
         
-        ctx.drawImage(
-          img,
-          -userImageSettings.size.width / 2,
-          -userImageSettings.size.height / 2,
-          userImageSettings.size.width,
-          userImageSettings.size.height
-        );
-        
-        ctx.restore();
-        
-        // Download the canvas
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, 400, 400);
+      }
+
+      // Draw template content
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('SALFAR SICKLE AID', 200, 50);
+      ctx.fillText('INITIATIVE', 200, 80);
+      
+      ctx.font = '16px Arial';
+      ctx.fillText('Supporting SCD Warriors', 200, 350);
+      ctx.fillText('Across Nigeria', 200, 370);
+
+      drawUserImageOnCanvas(ctx);
+    }
+
+    function drawUserImageOnCanvas(ctx: CanvasRenderingContext2D) {
+      if (userImage) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.save();
+          
+          // Apply transformations
+          const centerX = userImageSettings.position.x + userImageSettings.size.width / 2;
+          const centerY = userImageSettings.position.y + userImageSettings.size.height / 2;
+          
+          ctx.translate(centerX, centerY);
+          ctx.rotate((userImageSettings.rotation * Math.PI) / 180);
+          
+          if (selectedCampaign.settings.shape === 'circle') {
+            ctx.beginPath();
+            ctx.arc(0, 0, userImageSettings.size.width / 2, 0, 2 * Math.PI);
+            ctx.clip();
+          }
+          
+          ctx.drawImage(
+            img,
+            -userImageSettings.size.width / 2,
+            -userImageSettings.size.height / 2,
+            userImageSettings.size.width,
+            userImageSettings.size.height
+          );
+          
+          ctx.restore();
+          
+          // Download the canvas
+          const link = document.createElement('a');
+          link.download = `${selectedCampaign.name}-dp.png`;
+          link.href = canvas.toDataURL();
+          link.click();
+        };
+        img.src = userImage;
+      } else {
+        // Download without user image
         const link = document.createElement('a');
         link.download = `${selectedCampaign.name}-dp.png`;
         link.href = canvas.toDataURL();
         link.click();
-      };
-      img.src = userImage;
-    } else {
-      // Download without user image
-      const link = document.createElement('a');
-      link.download = `${selectedCampaign.name}-dp.png`;
-      link.href = canvas.toDataURL();
-      link.click();
+      }
     }
   };
 
@@ -367,6 +398,21 @@ export const DPCreator: React.FC = () => {
     }
   };
 
+  const getBackgroundStyle = (campaign: Campaign) => {
+    if (campaign.campaignImage) {
+      return {
+        backgroundImage: `url(${campaign.campaignImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      };
+    } else {
+      const template = templates.find(t => t.id === campaign.template);
+      return {
+        background: template?.bgColor || '#EA4335'
+      };
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -378,7 +424,7 @@ export const DPCreator: React.FC = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Campaigns List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-lg p-6">
@@ -457,7 +503,7 @@ export const DPCreator: React.FC = () => {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             {!selectedCampaign ? (
               <div className="bg-white rounded-lg shadow-lg p-12 text-center">
                 <div className="text-gray-400 mb-4">
@@ -473,27 +519,27 @@ export const DPCreator: React.FC = () => {
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Preview</h3>
                   <div className="flex justify-center">
                     <div 
-                      className="relative w-80 h-80 rounded-lg overflow-hidden shadow-lg cursor-move"
-                      style={{
-                        background: templates.find(t => t.id === selectedCampaign.template)?.bgColor || '#EA4335'
-                      }}
+                      className="relative w-96 h-96 rounded-lg overflow-hidden shadow-lg cursor-move"
+                      style={getBackgroundStyle(selectedCampaign)}
                       onMouseDown={handleMouseDown}
                       onMouseMove={handleMouseMove}
                       onMouseUp={handleMouseUp}
                       onMouseLeave={handleMouseUp}
                     >
-                      {/* Template Content */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
-                        <div className="text-center mb-8">
-                          <h4 className="text-lg font-bold">SALFAR SICKLE AID</h4>
-                          <h4 className="text-lg font-bold">INITIATIVE</h4>
+                      {/* Template Content - Only show if no campaign image */}
+                      {!selectedCampaign.campaignImage && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white">
+                          <div className="text-center mb-8">
+                            <h4 className="text-lg font-bold">SALFAR SICKLE AID</h4>
+                            <h4 className="text-lg font-bold">INITIATIVE</h4>
+                          </div>
+                          
+                          <div className="absolute bottom-4 text-center">
+                            <p className="text-sm">Supporting SCD Warriors</p>
+                            <p className="text-sm">Across Nigeria</p>
+                          </div>
                         </div>
-                        
-                        <div className="absolute bottom-4 text-center">
-                          <p className="text-sm">Supporting SCD Warriors</p>
-                          <p className="text-sm">Across Nigeria</p>
-                        </div>
-                      </div>
+                      )}
 
                       {/* User Image */}
                       {userImage && (
@@ -739,6 +785,7 @@ export const DPCreator: React.FC = () => {
                     <p>Position: {selectedCampaign.settings.position.x}px, {selectedCampaign.settings.position.y}px</p>
                     <p>Size: {selectedCampaign.settings.size.width}px × {selectedCampaign.settings.size.height}px</p>
                     <p>Shape: {selectedCampaign.settings.shape}</p>
+                    <p>Background: {selectedCampaign.campaignImage ? 'Custom Image' : 'Template'}</p>
                   </div>
                 </div>
               </div>
@@ -752,120 +799,210 @@ export const DPCreator: React.FC = () => {
         {/* Create Campaign Modal */}
         {showCreateForm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Create New Campaign</h3>
               
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Form Fields */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Campaign Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newCampaign.name}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      placeholder="Enter campaign name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Template
+                    </label>
+                    <select
+                      value={newCampaign.template}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, template: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                    >
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Campaign Background Image (Optional)
+                    </label>
+                    <input
+                      ref={campaignImageInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCampaignImageUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => campaignImageInputRef.current?.click()}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-md hover:border-google-red transition-colors"
+                    >
+                      <ImageIcon className="h-5 w-5 text-gray-400" />
+                      <span className="text-gray-600">
+                        {newCampaign.campaignImage ? 'Change Image' : 'Upload Background Image'}
+                      </span>
+                    </button>
+                    {newCampaign.campaignImage && (
+                      <button
+                        onClick={() => setNewCampaign({ ...newCampaign, campaignImage: null })}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Remove Image
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        X Position
+                      </label>
+                      <input
+                        type="number"
+                        value={newCampaign.position.x}
+                        onChange={(e) => setNewCampaign({
+                          ...newCampaign,
+                          position: { ...newCampaign.position, x: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Y Position
+                      </label>
+                      <input
+                        type="number"
+                        value={newCampaign.position.y}
+                        onChange={(e) => setNewCampaign({
+                          ...newCampaign,
+                          position: { ...newCampaign.position, y: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Width
+                      </label>
+                      <input
+                        type="number"
+                        value={newCampaign.size.width}
+                        onChange={(e) => setNewCampaign({
+                          ...newCampaign,
+                          size: { ...newCampaign.size, width: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Height
+                      </label>
+                      <input
+                        type="number"
+                        value={newCampaign.size.height}
+                        onChange={(e) => setNewCampaign({
+                          ...newCampaign,
+                          size: { ...newCampaign.size, height: parseInt(e.target.value) || 0 }
+                        })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Shape
+                    </label>
+                    <select
+                      value={newCampaign.shape}
+                      onChange={(e) => setNewCampaign({ ...newCampaign, shape: e.target.value as 'circle' | 'square' })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                    >
+                      <option value="circle">Circle</option>
+                      <option value="square">Square</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Preview */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Campaign Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newCampaign.name}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    placeholder="Enter campaign name"
-                  />
-                </div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Preview</h4>
+                  <div className="border-2 border-gray-200 rounded-lg p-4">
+                    <div 
+                      className="relative w-full h-64 rounded-lg overflow-hidden"
+                      style={{
+                        background: newCampaign.campaignImage 
+                          ? `url(${newCampaign.campaignImage}) center/cover`
+                          : templates.find(t => t.id === newCampaign.template)?.bgColor || '#EA4335'
+                      }}
+                    >
+                      {/* Template Content - Only show if no campaign image */}
+                      {!newCampaign.campaignImage && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-white text-xs">
+                          <div className="text-center mb-4">
+                            <h4 className="font-bold">SALFAR SICKLE AID</h4>
+                            <h4 className="font-bold">INITIATIVE</h4>
+                          </div>
+                          
+                          <div className="absolute bottom-2 text-center">
+                            <p>Supporting SCD Warriors</p>
+                            <p>Across Nigeria</p>
+                          </div>
+                        </div>
+                      )}
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Template
-                  </label>
-                  <select
-                    value={newCampaign.template}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, template: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                  >
-                    {templates.map((template) => (
-                      <option key={template.id} value={template.id}>
-                        {template.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      X Position
-                    </label>
-                    <input
-                      type="number"
-                      value={newCampaign.position.x}
-                      onChange={(e) => setNewCampaign({
-                        ...newCampaign,
-                        position: { ...newCampaign.position, x: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    />
+                      {/* Photo Placeholder */}
+                      <div 
+                        className="absolute border-2 border-dashed border-white/50 bg-white/10 flex items-center justify-center"
+                        style={{
+                          left: `${(newCampaign.position.x / 400) * 100}%`,
+                          top: `${(newCampaign.position.y / 400) * 100}%`,
+                          width: `${(newCampaign.size.width / 400) * 100}%`,
+                          height: `${(newCampaign.size.height / 400) * 100}%`,
+                          borderRadius: newCampaign.shape === 'circle' ? '50%' : '4px'
+                        }}
+                      >
+                        <div className="text-center text-white text-xs">
+                          <Upload className="h-4 w-4 mx-auto mb-1" />
+                          <p>Photo</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Y Position
-                    </label>
-                    <input
-                      type="number"
-                      value={newCampaign.position.y}
-                      onChange={(e) => setNewCampaign({
-                        ...newCampaign,
-                        position: { ...newCampaign.position, y: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Width
-                    </label>
-                    <input
-                      type="number"
-                      value={newCampaign.size.width}
-                      onChange={(e) => setNewCampaign({
-                        ...newCampaign,
-                        size: { ...newCampaign.size, width: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Height
-                    </label>
-                    <input
-                      type="number"
-                      value={newCampaign.size.height}
-                      onChange={(e) => setNewCampaign({
-                        ...newCampaign,
-                        size: { ...newCampaign.size, height: parseInt(e.target.value) || 0 }
-                      })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Shape
-                  </label>
-                  <select
-                    value={newCampaign.shape}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, shape: e.target.value as 'circle' | 'square' })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                  >
-                    <option value="circle">Circle</option>
-                    <option value="square">Square</option>
-                  </select>
                 </div>
               </div>
 
               <div className="flex space-x-4 mt-6">
                 <button
-                  onClick={() => setShowCreateForm(false)}
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setNewCampaign({
+                      name: '',
+                      template: 'template1',
+                      campaignImage: null,
+                      position: { x: 150, y: 100 },
+                      size: { width: 150, height: 150 },
+                      shape: 'circle'
+                    });
+                  }}
                   className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                 >
                   Cancel
