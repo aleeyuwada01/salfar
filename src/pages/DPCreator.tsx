@@ -442,115 +442,23 @@ export const DPCreator: React.FC = () => {
     setShareStatus('sharing');
     
     try {
-      // First try to generate the image as a blob for native sharing
-      if (navigator.share && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          canvas.width = 400;
-          canvas.height = 400;
+      // Check if native sharing is supported first
+      if (!navigator.share) {
+        // Fallback to clipboard immediately if Web Share API is not supported
+        const shareText = `Show your support for SCD warriors with SALFAR! 🩸❤️ 
 
-          // Generate the image on canvas (similar to download function)
-          const generateImageBlob = (): Promise<Blob | null> => {
-            return new Promise((resolve) => {
-              if (selectedCampaign.campaignImage) {
-                const img = new Image();
-                img.onload = () => {
-                  ctx.drawImage(img, 0, 0, 400, 400);
-                  drawUserImageAndResolve();
-                };
-                img.src = selectedCampaign.campaignImage;
-              } else {
-                // Draw template background
-                const template = templates.find(t => t.id === selectedCampaign.template);
-                if (template) {
-                  const gradient = ctx.createLinearGradient(0, 0, 400, 400);
-                  if (template.bgColor.includes('2D5016')) {
-                    gradient.addColorStop(0, '#2D5016');
-                    gradient.addColorStop(1, '#8B4513');
-                  } else if (template.bgColor.includes('EA4335')) {
-                    gradient.addColorStop(0, '#EA4335');
-                    gradient.addColorStop(1, '#FB8C00');
-                  } else {
-                    gradient.addColorStop(0, '#4285F4');
-                    gradient.addColorStop(1, '#34A853');
-                  }
-                  
-                  ctx.fillStyle = gradient;
-                  ctx.fillRect(0, 0, 400, 400);
-                }
+Create your own support DP at: ${window.location.href}
 
-                // Draw template content
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 24px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('SALFAR SICKLE AID', 200, 50);
-                ctx.fillText('INITIATIVE', 200, 80);
-                
-                ctx.font = '16px Arial';
-                ctx.fillText('Supporting SCD Warriors', 200, 350);
-                ctx.fillText('Across Nigeria', 200, 370);
-
-                drawUserImageAndResolve();
-              }
-
-              function drawUserImageAndResolve() {
-                if (userImage) {
-                  const img = new Image();
-                  img.onload = () => {
-                    ctx.save();
-                    
-                    const centerX = userImageSettings.position.x + userImageSettings.size.width / 2;
-                    const centerY = userImageSettings.position.y + userImageSettings.size.height / 2;
-                    
-                    ctx.translate(centerX, centerY);
-                    ctx.rotate((userImageSettings.rotation * Math.PI) / 180);
-                    
-                    if (selectedCampaign.settings.shape === 'circle') {
-                      ctx.beginPath();
-                      ctx.arc(0, 0, userImageSettings.size.width / 2, 0, 2 * Math.PI);
-                      ctx.clip();
-                    }
-                    
-                    ctx.drawImage(
-                      img,
-                      -userImageSettings.size.width / 2,
-                      -userImageSettings.size.height / 2,
-                      userImageSettings.size.width,
-                      userImageSettings.size.height
-                    );
-                    
-                    ctx.restore();
-                    
-                    canvas.toBlob(resolve, 'image/png');
-                  };
-                  img.src = userImage;
-                } else {
-                  canvas.toBlob(resolve, 'image/png');
-                }
-              }
-            });
-          };
-
-          const blob = await generateImageBlob();
-          
-          if (blob) {
-            const file = new File([blob], `${selectedCampaign.name}-dp.png`, { type: 'image/png' });
-            
-            await navigator.share({
-              title: `${selectedCampaign.name} - SALFAR Support DP`,
-              text: 'Show your support for SCD warriors with SALFAR! 🩸❤️ #SALFARSupport #SCDWarriors #SickleCell',
-              files: [file]
-            });
-            
-            setShareStatus('idle');
-            return;
-          }
-        }
+#SALFARSupport #SCDWarriors #SickleCell`;
+        
+        await navigator.clipboard.writeText(shareText);
+        setShareStatus('copied');
+        setTimeout(() => setShareStatus('idle'), 3000);
+        return;
       }
-      
-      // Fallback: Try sharing just the URL and text
-      if (navigator.share) {
+
+      // Try sharing just the URL and text first (no file generation)
+      try {
         await navigator.share({
           title: `${selectedCampaign.name} - SALFAR Support DP`,
           text: 'Show your support for SCD warriors with SALFAR! Create your own support DP at: ',
@@ -558,6 +466,8 @@ export const DPCreator: React.FC = () => {
         });
         setShareStatus('idle');
         return;
+      } catch (shareError) {
+        console.log('Basic share failed, trying clipboard fallback:', shareError);
       }
       
       // Final fallback: Copy to clipboard
@@ -576,23 +486,7 @@ Create your own support DP at: ${window.location.href}
     } catch (error) {
       console.error('Error sharing:', error);
       setShareStatus('error');
-      
-      // Try clipboard as final fallback
-      try {
-        const shareText = `Show your support for SCD warriors with SALFAR! 🩸❤️ 
-
-Create your own support DP at: ${window.location.href}
-
-#SALFARSupport #SCDWarriors #SickleCell`;
-        
-        await navigator.clipboard.writeText(shareText);
-        setShareStatus('copied');
-        setTimeout(() => setShareStatus('idle'), 3000);
-      } catch (clipboardError) {
-        console.error('Clipboard fallback failed:', clipboardError);
-        setShareStatus('error');
-        setTimeout(() => setShareStatus('idle'), 3000);
-      }
+      setTimeout(() => setShareStatus('idle'), 3000);
     }
   };
 
