@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Upload, Download, Share2, RotateCcw, Move, Crop, Eye, Settings, Image as ImageIcon, Users, TrendingUp } from 'lucide-react';
+import { Upload, Download, Share2, RotateCcw, Move, Crop, Eye, Settings, Image as ImageIcon, Users, TrendingUp, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 
 interface DPPosition {
   x: number;
@@ -7,6 +7,14 @@ interface DPPosition {
   width: number;
   height: number;
   shape: 'circle' | 'square' | 'rounded';
+}
+
+interface UserImageSettings {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
 }
 
 interface Campaign {
@@ -28,6 +36,17 @@ export const DPCreator: React.FC = () => {
   const [userImage, setUserImage] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // User image positioning controls
+  const [userImageSettings, setUserImageSettings] = useState<UserImageSettings>({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotation: 0
+  });
+  const [isUserDragging, setIsUserDragging] = useState(false);
+  const [userDragOffset, setUserDragOffset] = useState({ x: 0, y: 0 });
   
   // Admin states
   const [adminFlyer, setAdminFlyer] = useState<string | null>(null);
@@ -75,6 +94,19 @@ export const DPCreator: React.FC = () => {
       }
     }
   }, [userImage]);
+
+  // Reset user image settings when campaign changes
+  useEffect(() => {
+    if (selectedCampaign) {
+      setUserImageSettings({
+        x: 0,
+        y: 0,
+        width: selectedCampaign.dpPosition.width,
+        height: selectedCampaign.dpPosition.height,
+        rotation: 0
+      });
+    }
+  }, [selectedCampaign]);
 
   // Load campaigns from localStorage
   const loadCampaigns = (): Campaign[] => {
@@ -146,6 +178,16 @@ export const DPCreator: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setUserImage(e.target?.result as string);
+        // Reset user image settings when new image is uploaded
+        if (selectedCampaign) {
+          setUserImageSettings({
+            x: 0,
+            y: 0,
+            width: selectedCampaign.dpPosition.width,
+            height: selectedCampaign.dpPosition.height,
+            rotation: 0
+          });
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -208,33 +250,51 @@ export const DPCreator: React.FC = () => {
         userImg.src = userImage;
       });
 
-      // Use the campaign's DP position settings directly
-      const pos = selectedCampaign.dpPosition;
+      // Use the campaign's DP position as the clipping area
+      const dpPos = selectedCampaign.dpPosition;
       
       // Create clipping path based on shape
       ctx.save();
       ctx.beginPath();
       
-      if (pos.shape === 'circle') {
+      if (dpPos.shape === 'circle') {
         ctx.arc(
-          pos.x + pos.width / 2, 
-          pos.y + pos.height / 2, 
-          pos.width / 2, 
+          dpPos.x + dpPos.width / 2, 
+          dpPos.y + dpPos.height / 2, 
+          dpPos.width / 2, 
           0, 
           2 * Math.PI
         );
-      } else if (pos.shape === 'rounded') {
-        const radius = Math.min(pos.width, pos.height) * 0.1;
-        ctx.roundRect(pos.x, pos.y, pos.width, pos.height, radius);
+      } else if (dpPos.shape === 'rounded') {
+        const radius = Math.min(dpPos.width, dpPos.height) * 0.1;
+        ctx.roundRect(dpPos.x, dpPos.y, dpPos.width, dpPos.height, radius);
       } else {
-        ctx.rect(pos.x, pos.y, pos.width, pos.height);
+        ctx.rect(dpPos.x, dpPos.y, dpPos.width, dpPos.height);
       }
       
       ctx.clip();
       
-      // Draw user image to fit exactly in the DP area
-      ctx.drawImage(userImg, pos.x, pos.y, pos.width, pos.height);
+      // Apply user image transformations within the DP area
+      const centerX = dpPos.x + dpPos.width / 2;
+      const centerY = dpPos.y + dpPos.height / 2;
       
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate((userImageSettings.rotation * Math.PI) / 180);
+      
+      // Draw user image with their custom positioning and sizing
+      const userX = userImageSettings.x - userImageSettings.width / 2;
+      const userY = userImageSettings.y - userImageSettings.height / 2;
+      
+      ctx.drawImage(
+        userImg, 
+        userX, 
+        userY, 
+        userImageSettings.width, 
+        userImageSettings.height
+      );
+      
+      ctx.restore();
       ctx.restore();
       
       // Add SALFAR watermark
@@ -253,7 +313,7 @@ export const DPCreator: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [selectedCampaign, userImage]);
+  }, [selectedCampaign, userImage, userImageSettings]);
 
   const downloadImage = () => {
     if (!previewImage) return;
@@ -340,6 +400,7 @@ export const DPCreator: React.FC = () => {
     alert('Campaign saved successfully!');
   };
 
+  // Admin drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (activeTab !== 'admin' || !adminFlyer) return;
     
@@ -378,6 +439,56 @@ export const DPCreator: React.FC = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
+  // User image drag handlers for preview
+  const handleUserMouseDown = (e: React.MouseEvent) => {
+    if (!selectedCampaign || !userImage) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Check if click is within the user image area (simplified check)
+    const dpPos = selectedCampaign.dpPosition;
+    const centerX = dpPos.x + dpPos.width / 2;
+    const centerY = dpPos.y + dpPos.height / 2;
+    const userX = centerX + userImageSettings.x - userImageSettings.width / 2;
+    const userY = centerY + userImageSettings.y - userImageSettings.height / 2;
+    
+    if (x >= userX && x <= userX + userImageSettings.width &&
+        y >= userY && y <= userY + userImageSettings.height) {
+      
+      setUserDragOffset({
+        x: x - (centerX + userImageSettings.x),
+        y: y - (centerY + userImageSettings.y)
+      });
+      
+      setIsUserDragging(true);
+    }
+  };
+
+  const handleUserMouseMove = (e: React.MouseEvent) => {
+    if (!isUserDragging || !selectedCampaign) return;
+    
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const dpPos = selectedCampaign.dpPosition;
+    const centerX = dpPos.x + dpPos.width / 2;
+    const centerY = dpPos.y + dpPos.height / 2;
+    
+    setUserImageSettings(prev => ({
+      ...prev,
+      x: x - centerX - userDragOffset.x,
+      y: y - centerY - userDragOffset.y
+    }));
+  };
+
+  const handleUserMouseUp = () => {
+    setIsUserDragging(false);
+    setUserDragOffset({ x: 0, y: 0 });
+  };
+
   const handleDimensionChange = (dimension: 'width' | 'height', value: number) => {
     setAdminDpPosition(prev => ({
       ...prev,
@@ -391,11 +502,23 @@ export const DPCreator: React.FC = () => {
     localStorage.removeItem(USER_IMAGE_KEY);
   };
 
+  const resetUserImageSettings = () => {
+    if (selectedCampaign) {
+      setUserImageSettings({
+        x: 0,
+        y: 0,
+        width: selectedCampaign.dpPosition.width,
+        height: selectedCampaign.dpPosition.height,
+        rotation: 0
+      });
+    }
+  };
+
   React.useEffect(() => {
     if (selectedCampaign && userImage) {
       generatePreview();
     }
-  }, [selectedCampaign, userImage, generatePreview]);
+  }, [selectedCampaign, userImage, userImageSettings, generatePreview]);
 
   return (
     <div className="animate-fade-in">
@@ -501,30 +624,30 @@ export const DPCreator: React.FC = () => {
             </div>
 
             {selectedCampaign && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Upload Section */}
-                <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Upload Your Photo</h3>
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Upload Your Photo</h3>
                   
                   <div 
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-google-red transition-colors"
+                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-google-red transition-colors"
                   >
                     {userImage ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <img 
                           src={userImage} 
                           alt="User upload"
-                          className="w-32 h-32 object-cover rounded-full mx-auto"
+                          className="w-24 h-24 object-cover rounded-full mx-auto"
                         />
-                        <p className="text-gray-600">Click to change photo</p>
+                        <p className="text-gray-600 text-sm">Click to change photo</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        <Upload className="h-12 w-12 text-gray-400 mx-auto" />
+                      <div className="space-y-3">
+                        <Upload className="h-10 w-10 text-gray-400 mx-auto" />
                         <div>
-                          <p className="text-lg font-medium text-gray-900">Upload your profile picture</p>
-                          <p className="text-gray-600">PNG, JPG up to 2MB</p>
+                          <p className="font-medium text-gray-900">Upload your photo</p>
+                          <p className="text-gray-600 text-sm">PNG, JPG up to 2MB</p>
                         </div>
                       </div>
                     )}
@@ -539,10 +662,10 @@ export const DPCreator: React.FC = () => {
                   />
 
                   {userImage && (
-                    <div className="mt-6 space-y-4">
+                    <div className="mt-4 space-y-3">
                       <button
                         onClick={clearUserImage}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                        className="w-full flex items-center justify-center space-x-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm"
                       >
                         <RotateCcw className="h-4 w-4" />
                         <span>Reset Photo</span>
@@ -552,63 +675,196 @@ export const DPCreator: React.FC = () => {
                       </div>
                     </div>
                   )}
-
-                  {/* Show selected campaign DP position info */}
-                  {selectedCampaign && (
-                    <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                      <h4 className="font-semibold text-gray-900 mb-2">Campaign Settings</h4>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <div>Position: {selectedCampaign.dpPosition.x}px, {selectedCampaign.dpPosition.y}px</div>
-                        <div>Size: {selectedCampaign.dpPosition.width}px × {selectedCampaign.dpPosition.height}px</div>
-                        <div>Shape: {selectedCampaign.dpPosition.shape}</div>
-                      </div>
-                    </div>
-                  )}
                 </div>
 
+                {/* Image Controls */}
+                {userImage && (
+                  <div className="bg-white rounded-lg shadow-lg p-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-4">Adjust Your Photo</h3>
+                    
+                    <div className="space-y-4">
+                      {/* Size Controls */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Size</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Width</label>
+                            <input
+                              type="range"
+                              min="20"
+                              max="300"
+                              value={userImageSettings.width}
+                              onChange={(e) => setUserImageSettings(prev => ({ 
+                                ...prev, 
+                                width: parseInt(e.target.value) 
+                              }))}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-gray-500 text-center">{userImageSettings.width}px</div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Height</label>
+                            <input
+                              type="range"
+                              min="20"
+                              max="300"
+                              value={userImageSettings.height}
+                              onChange={(e) => setUserImageSettings(prev => ({ 
+                                ...prev, 
+                                height: parseInt(e.target.value) 
+                              }))}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-gray-500 text-center">{userImageSettings.height}px</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Position Controls */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Position</label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">X Position</label>
+                            <input
+                              type="range"
+                              min="-100"
+                              max="100"
+                              value={userImageSettings.x}
+                              onChange={(e) => setUserImageSettings(prev => ({ 
+                                ...prev, 
+                                x: parseInt(e.target.value) 
+                              }))}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-gray-500 text-center">{userImageSettings.x}px</div>
+                          </div>
+                          <div>
+                            <label className="block text-xs text-gray-600 mb-1">Y Position</label>
+                            <input
+                              type="range"
+                              min="-100"
+                              max="100"
+                              value={userImageSettings.y}
+                              onChange={(e) => setUserImageSettings(prev => ({ 
+                                ...prev, 
+                                y: parseInt(e.target.value) 
+                              }))}
+                              className="w-full"
+                            />
+                            <div className="text-xs text-gray-500 text-center">{userImageSettings.y}px</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Rotation Control */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Rotation</label>
+                        <input
+                          type="range"
+                          min="-180"
+                          max="180"
+                          value={userImageSettings.rotation}
+                          onChange={(e) => setUserImageSettings(prev => ({ 
+                            ...prev, 
+                            rotation: parseInt(e.target.value) 
+                          }))}
+                          className="w-full"
+                        />
+                        <div className="text-xs text-gray-500 text-center">{userImageSettings.rotation}°</div>
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => setUserImageSettings(prev => ({ 
+                            ...prev, 
+                            width: prev.width * 1.1, 
+                            height: prev.height * 1.1 
+                          }))}
+                          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors text-sm"
+                        >
+                          <ZoomIn className="h-4 w-4" />
+                          <span>Zoom In</span>
+                        </button>
+                        <button
+                          onClick={() => setUserImageSettings(prev => ({ 
+                            ...prev, 
+                            width: prev.width * 0.9, 
+                            height: prev.height * 0.9 
+                          }))}
+                          className="flex-1 flex items-center justify-center space-x-1 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors text-sm"
+                        >
+                          <ZoomOut className="h-4 w-4" />
+                          <span>Zoom Out</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={resetUserImageSettings}
+                        className="w-full flex items-center justify-center space-x-2 px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-sm"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        <span>Reset Position & Size</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Preview Section */}
-                <div className="bg-white rounded-lg shadow-lg p-8">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-6">Preview</h3>
+                <div className="bg-white rounded-lg shadow-lg p-6">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Preview</h3>
                   
                   {previewImage ? (
-                    <div className="space-y-6">
-                      <div className="border rounded-lg overflow-hidden">
+                    <div className="space-y-4">
+                      <div 
+                        className="border rounded-lg overflow-hidden cursor-move"
+                        onMouseDown={handleUserMouseDown}
+                        onMouseMove={handleUserMouseMove}
+                        onMouseUp={handleUserMouseUp}
+                        onMouseLeave={handleUserMouseUp}
+                      >
                         <img 
                           src={previewImage} 
                           alt="Preview"
                           className="w-full h-auto"
+                          draggable={false}
                         />
                       </div>
                       
-                      <div className="flex space-x-4">
+                      <div className="text-xs text-gray-500 text-center">
+                        💡 Tip: You can also drag your photo in the preview above
+                      </div>
+                      
+                      <div className="flex space-x-3">
                         <button
                           onClick={downloadImage}
-                          className="flex-1 bg-google-red text-white px-4 py-3 rounded-full font-semibold hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
+                          className="flex-1 bg-google-red text-white px-3 py-2 rounded-full font-semibold hover:bg-red-600 transition-colors flex items-center justify-center space-x-2 text-sm"
                         >
-                          <Download className="h-5 w-5" />
+                          <Download className="h-4 w-4" />
                           <span>Download</span>
                         </button>
                         
                         <button
                           onClick={shareImage}
-                          className="flex-1 bg-google-blue text-white px-4 py-3 rounded-full font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+                          className="flex-1 bg-google-blue text-white px-3 py-2 rounded-full font-semibold hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2 text-sm"
                         >
-                          <Share2 className="h-5 w-5" />
+                          <Share2 className="h-4 w-4" />
                           <span>Share</span>
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center py-12">
+                    <div className="text-center py-8">
                       {isProcessing ? (
-                        <div className="space-y-4">
-                          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-google-red mx-auto"></div>
-                          <p className="text-gray-600">Generating preview...</p>
+                        <div className="space-y-3">
+                          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-google-red mx-auto"></div>
+                          <p className="text-gray-600 text-sm">Generating preview...</p>
                         </div>
                       ) : (
-                        <div className="space-y-4">
-                          <Crop className="h-12 w-12 text-gray-400 mx-auto" />
-                          <p className="text-gray-600">
+                        <div className="space-y-3">
+                          <Crop className="h-10 w-10 text-gray-400 mx-auto" />
+                          <p className="text-gray-600 text-sm">
                             {!userImage ? 'Upload a photo to see preview' : 'Preview will appear here'}
                           </p>
                         </div>
