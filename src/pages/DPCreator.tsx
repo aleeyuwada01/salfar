@@ -45,7 +45,6 @@ export const DPCreator: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const adminFileInputRef = useRef<HTMLInputElement>(null);
-  const flyerRef = useRef<HTMLImageElement>(null);
 
   // Load user image from localStorage on component mount
   useEffect(() => {
@@ -69,7 +68,6 @@ export const DPCreator: React.FC = () => {
       }
     } catch (error) {
       console.error('Error saving user image to localStorage:', error);
-      // If quota exceeded, clear the user image
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         setUserImage(null);
         localStorage.removeItem(USER_IMAGE_KEY);
@@ -126,38 +124,20 @@ export const DPCreator: React.FC = () => {
   // Save campaigns to localStorage whenever campaigns change
   useEffect(() => {
     try {
-      // Create a copy of campaigns with base64 data URLs removed to prevent quota exceeded errors
       const campaignsToSave = campaigns.map(campaign => ({
         ...campaign,
-        // If flyerUrl is a base64 data URL, replace it with a placeholder
         flyerUrl: campaign.flyerUrl.startsWith('data:') ? '' : campaign.flyerUrl
       }));
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(campaignsToSave));
     } catch (error) {
       console.error('Error saving campaigns to localStorage:', error);
-      // If we still get quota exceeded, try to save without any potentially large data
-      try {
-        const minimalCampaigns = campaigns.map(campaign => ({
-          id: campaign.id,
-          name: campaign.name,
-          flyerUrl: campaign.flyerUrl.startsWith('data:') ? '' : campaign.flyerUrl,
-          dpPosition: campaign.dpPosition,
-          downloads: campaign.downloads,
-          shares: campaign.shares,
-          isActive: campaign.isActive
-        }));
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalCampaigns));
-      } catch (secondError) {
-        console.error('Failed to save even minimal campaign data:', secondError);
-      }
     }
   }, [campaigns]);
 
   const handleUserImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file size (limit to 2MB to prevent localStorage quota issues)
       if (file.size > 2 * 1024 * 1024) {
         alert('Please select an image smaller than 2MB to ensure it can be saved.');
         return;
@@ -177,7 +157,6 @@ export const DPCreator: React.FC = () => {
       const reader = new FileReader();
       reader.onload = (e) => {
         setAdminFlyer(e.target?.result as string);
-        // Reset position when new flyer is uploaded
         setAdminDpPosition({
           x: 50,
           y: 50,
@@ -229,65 +208,32 @@ export const DPCreator: React.FC = () => {
         userImg.src = userImage;
       });
 
-      // Get the campaign's DP position settings
+      // Use the campaign's DP position settings directly
       const pos = selectedCampaign.dpPosition;
       
-      // Calculate the scale factor between the displayed image and actual image
-      const displayedImg = document.querySelector(`img[src="${selectedCampaign.flyerUrl}"]`) as HTMLImageElement;
-      let scaleX = 1;
-      let scaleY = 1;
-      
-      if (displayedImg) {
-        scaleX = flyerImg.width / displayedImg.clientWidth;
-        scaleY = flyerImg.height / displayedImg.clientHeight;
-      }
-
-      // Apply scaling to position and size
-      const scaledPos = {
-        x: pos.x * scaleX,
-        y: pos.y * scaleY,
-        width: pos.width * scaleX,
-        height: pos.height * scaleY,
-        shape: pos.shape
-      };
-      
-      // Calculate scaling to maintain aspect ratio within the DP area
-      const scale = Math.min(scaledPos.width / userImg.width, scaledPos.height / userImg.height);
-      const scaledWidth = userImg.width * scale;
-      const scaledHeight = userImg.height * scale;
-      
-      // Center the image in the DP area
-      const offsetX = (scaledPos.width - scaledWidth) / 2;
-      const offsetY = (scaledPos.height - scaledHeight) / 2;
-      
-      ctx.save();
-      
       // Create clipping path based on shape
+      ctx.save();
       ctx.beginPath();
-      if (scaledPos.shape === 'circle') {
+      
+      if (pos.shape === 'circle') {
         ctx.arc(
-          scaledPos.x + scaledPos.width / 2, 
-          scaledPos.y + scaledPos.height / 2, 
-          scaledPos.width / 2, 
+          pos.x + pos.width / 2, 
+          pos.y + pos.height / 2, 
+          pos.width / 2, 
           0, 
           2 * Math.PI
         );
-      } else if (scaledPos.shape === 'rounded') {
-        const radius = Math.min(scaledPos.width, scaledPos.height) * 0.1;
-        ctx.roundRect(scaledPos.x, scaledPos.y, scaledPos.width, scaledPos.height, radius);
+      } else if (pos.shape === 'rounded') {
+        const radius = Math.min(pos.width, pos.height) * 0.1;
+        ctx.roundRect(pos.x, pos.y, pos.width, pos.height, radius);
       } else {
-        ctx.rect(scaledPos.x, scaledPos.y, scaledPos.width, scaledPos.height);
+        ctx.rect(pos.x, pos.y, pos.width, pos.height);
       }
+      
       ctx.clip();
       
-      // Draw user image
-      ctx.drawImage(
-        userImg, 
-        scaledPos.x + offsetX, 
-        scaledPos.y + offsetY, 
-        scaledWidth, 
-        scaledHeight
-      );
+      // Draw user image to fit exactly in the DP area
+      ctx.drawImage(userImg, pos.x, pos.y, pos.width, pos.height);
       
       ctx.restore();
       
@@ -317,7 +263,6 @@ export const DPCreator: React.FC = () => {
     link.href = previewImage;
     link.click();
     
-    // Update download count
     if (selectedCampaign) {
       setCampaigns(prev => prev.map(c => 
         c.id === selectedCampaign.id 
@@ -331,7 +276,6 @@ export const DPCreator: React.FC = () => {
     if (!previewImage) return;
     
     try {
-      // Convert data URL to blob
       const response = await fetch(previewImage);
       const blob = await response.blob();
       const file = new File([blob], 'salfar-dp.png', { type: 'image/png' });
@@ -343,7 +287,6 @@ export const DPCreator: React.FC = () => {
           files: [file]
         });
         
-        // Update share count
         if (selectedCampaign) {
           setCampaigns(prev => prev.map(c => 
             c.id === selectedCampaign.id 
@@ -352,7 +295,6 @@ export const DPCreator: React.FC = () => {
           ));
         }
       } else {
-        // Fallback: copy to clipboard
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
@@ -380,15 +322,11 @@ export const DPCreator: React.FC = () => {
   const saveCampaign = () => {
     if (!adminFlyer || !campaignName) return;
     
-    // Check if adminFlyer is a base64 data URL
-    const isBase64Image = adminFlyer.startsWith('data:');
-    
     const newCampaign: Campaign = {
       id: Date.now().toString(),
       name: campaignName,
-      // If it's a base64 image, use empty string to prevent localStorage quota issues
-      flyerUrl: isBase64Image ? adminFlyer : adminFlyer, // Keep the full data URL in memory for current session
-      dpPosition: { ...adminDpPosition }, // Create a copy to avoid reference issues
+      flyerUrl: adminFlyer,
+      dpPosition: { ...adminDpPosition },
       downloads: 0,
       shares: 0,
       isActive: true
@@ -399,11 +337,7 @@ export const DPCreator: React.FC = () => {
     setAdminFlyer(null);
     setAdminDpPosition({ x: 50, y: 50, width: 100, height: 100, shape: 'circle' });
     
-    if (isBase64Image) {
-      alert('Campaign saved successfully! Note: Locally uploaded images will not persist across browser sessions due to storage limitations. For persistent campaigns, please use external image URLs.');
-    } else {
-      alert('Campaign saved successfully!');
-    }
+    alert('Campaign saved successfully!');
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -413,11 +347,9 @@ export const DPCreator: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Check if click is within the DP area
     if (x >= adminDpPosition.x && x <= adminDpPosition.x + adminDpPosition.width &&
         y >= adminDpPosition.y && y <= adminDpPosition.y + adminDpPosition.height) {
       
-      // Calculate offset from mouse position to top-left of DP area
       setDragOffset({
         x: x - adminDpPosition.x,
         y: y - adminDpPosition.y
@@ -434,7 +366,6 @@ export const DPCreator: React.FC = () => {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Update position using the drag offset to maintain smooth dragging
     setAdminDpPosition(prev => ({ 
       ...prev, 
       x: Math.max(0, Math.min(x - dragOffset.x, rect.width - prev.width)),
@@ -447,15 +378,13 @@ export const DPCreator: React.FC = () => {
     setDragOffset({ x: 0, y: 0 });
   };
 
-  // Handle dimension changes without affecting position
   const handleDimensionChange = (dimension: 'width' | 'height', value: number) => {
     setAdminDpPosition(prev => ({
       ...prev,
-      [dimension]: Math.max(10, value) // Minimum size of 10px
+      [dimension]: Math.max(10, value)
     }));
   };
 
-  // Clear user image and remove from localStorage
   const clearUserImage = () => {
     setUserImage(null);
     setPreviewImage(null);
@@ -881,7 +810,6 @@ export const DPCreator: React.FC = () => {
                     style={{ maxHeight: '400px' }}
                   >
                     <img 
-                      ref={flyerRef}
                       src={adminFlyer} 
                       alt="Flyer" 
                       className="w-full h-auto block"
