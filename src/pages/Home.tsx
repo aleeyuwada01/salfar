@@ -74,21 +74,21 @@ export const Home: React.FC = () => {
   const featuredStories = [
     {
       title: "Supporting Warriors in Kano State",
-      excerpt: "Our latest medical aid program reaches 150+ SCD warriors in rural communities.",
+      excerpt: "Our latest medical aid program reaches 150+ SCD warriors in rural communities across Northern Nigeria.",
       date: "March 15, 2025",
-      image: "https://images.pexels.com/photos/6129044/pexels-photo-6129044.jpeg?auto=compress&cs=tinysrgb&w=800"
+      image: "https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg?auto=compress&cs=tinysrgb&w=800"
     },
     {
       title: "New Partnership with Lagos University Teaching Hospital",
-      excerpt: "Expanding access to specialized SCD care and research opportunities.",
+      excerpt: "Expanding access to specialized SCD care and research opportunities for African communities.",
       date: "March 10, 2025",
-      image: "https://images.pexels.com/photos/8442093/pexels-photo-8442093.jpeg?auto=compress&cs=tinysrgb&w=800"
+      image: "https://images.pexels.com/photos/6303773/pexels-photo-6303773.jpeg?auto=compress&cs=tinysrgb&w=800"
     },
     {
       title: "Awareness Campaign Reaches 10,000 Students",
-      excerpt: "Educational programs in schools help prevent discrimination and promote understanding.",
+      excerpt: "Educational programs in Nigerian schools help prevent discrimination and promote understanding.",
       date: "March 5, 2025",
-      image: "https://images.pexels.com/photos/8363028/pexels-photo-8363028.jpeg?auto=compress&cs=tinysrgb&w=800"
+      image: "https://images.pexels.com/photos/8923181/pexels-photo-8923181.jpeg?auto=compress&cs=tinysrgb&w=800"
     }
   ];
 
