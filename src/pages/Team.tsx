@@ -10,14 +10,14 @@ export const Team: React.FC = () => {
       name: "Saleh Farouq Gagarawa",
       title: "Executive Director",
       description: "Saleh Farouq Gagarawa provides strategic leadership and oversight to all organizational programs and partnerships. He ensures Salfar's vision, mission, and pillars are effectively implemented across all levels. He represents the organization in high-level engagements and drives its advocacy, growth, and sustainability.",
-      image: executiveDirectorImage,
+      image: grantsLeadImage,
       icon: Target
     },
     {
       name: "Happiness",
       title: "Grants, Policy & Partnership Lead",
       description: "Happiness brings heart, brilliance, and strategy to everything she does. As Salfar's Grants and Policy Lead, she not only secures the resources that drive our programs she ensures every project reflects the dignity, rights, and realities of Sickle Cell Warriors. Her deep commitment to equity and her gift for turning ideas into action make her an essential force behind our mission. With Happiness on the team, hope meets structure and impact becomes inevitable.",
-      image: grantsLeadImage,
+      image: executiveDirectorImage,
       icon: Award
     }
   ];
