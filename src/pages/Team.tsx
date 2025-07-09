@@ -3,6 +3,8 @@ import { Users, Award, Target, Heart } from 'lucide-react';
 import { ExpandableText } from '../components/ExpandableText';
 import executiveDirectorImage from '../assets/team/WhatsApp Image 2025-07-08 at 10.04.27_13bf693a.jpg';
 import grantsLeadImage from '../assets/team/WhatsApp Image 2025-07-08 at 10.00.33_a6dd1dea.jpg';
+import ruqaiyaImage from '../assets/team/Ruqaiya.png';
+import musaImage from '../assets/team/Musa.jpg';
 
 export const Team: React.FC = () => {
   const teamMembers = [
@@ -19,6 +21,20 @@ export const Team: React.FC = () => {
       description: "Happiness brings heart, brilliance, and strategy to everything she does. As Salfar's Grants and Policy Lead, she not only secures the resources that drive our programs she ensures every project reflects the dignity, rights, and realities of Sickle Cell Warriors. Her deep commitment to equity and her gift for turning ideas into action make her an essential force behind our mission. With Happiness on the team, hope meets structure and impact becomes inevitable.",
       image: executiveDirectorImage,
       icon: Award
+    },
+    {
+      name: "Ruqaiya",
+      title: "Engagement & Inclusion Officer",
+      description: "Ruqaiya is the voice of connection and compassion at Salfar. She ensures that every Sickle Cell Warrior regardless of background, gender, or location feels seen, heard, and included. As Engagement and Inclusion Officer, she builds trust with our communities, bridges gaps, and ensures our programs remain people-centered. With empathy as her guide and purpose in her voice, Ruqaiya brings inclusion to life in every space she enters.",
+      image: ruqaiyaImage,
+      icon: Users
+    },
+    {
+      name: "Musa",
+      title: "Monitoring & Evaluation Officer",
+      description: "Musa is the quiet engine behind our progress ensuring that every goal is tracked, every impact is measured, and every voice is counted. As Monitoring and Evaluation Officer, he brings structure, integrity, and insight to our work across Nigeria. From overseeing data collection to guiding state coordinators, Musa ensures our decisions are driven by evidence and empathy. His dedication to accuracy and accountability is what keeps Salfar grounded, focused, and growing in the right direction.",
+      image: musaImage,
+      icon: Target
     }
   ];
 
@@ -54,7 +70,7 @@ export const Team: React.FC = () => {
       {/* Team Members */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             {teamMembers.map((member, index) => {
               const IconComponent = member.icon;
               return (
