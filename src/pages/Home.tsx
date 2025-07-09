@@ -1,13 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { UserPlus, Heart, MapPin, TrendingUp, Users, Shield, Calendar, PieChart, ArrowRight, Image as ImageIcon } from 'lucide-react';
+import { UserPlus, Heart, MapPin, TrendingUp, Users, Shield, Calendar, PieChart, ArrowRight, Image as ImageIcon, ChevronDown, ChevronUp } from 'lucide-react';
+
+interface ExpandableTextProps {
+  children: React.ReactNode;
+  previewLines?: number;
+}
+
+const ExpandableText: React.FC<ExpandableTextProps> = ({ children, previewLines = 3 }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  return (
+    <div>
+      <div className={`${!isExpanded ? `line-clamp-${previewLines}` : ''}`}>
+        {children}
+      </div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-2 text-google-red hover:text-google-orange font-medium flex items-center space-x-1 transition-colors"
+      >
+        <span>{isExpanded ? 'Show Less' : 'Read More'}</span>
+        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+    </div>
+  );
+};
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
     totalWarriors: 2847,
     warriorsInPoverty: 1923,
     statesCovered: 28,
-    programsActive: 12
+    programsActive: 8
   });
 
   const [hoveredState, setHoveredState] = useState<string | null>(null);
@@ -71,27 +95,6 @@ export const Home: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const featuredStories = [
-    {
-      title: "Supporting Warriors in Kano State",
-      excerpt: "Our latest medical aid program reaches 150+ SCD warriors in rural communities across Northern Nigeria.",
-      date: "March 15, 2025",
-      image: "https://images.pexels.com/photos/5699456/pexels-photo-5699456.jpeg?auto=compress&cs=tinysrgb&w=800"
-    },
-    {
-      title: "New Partnership with Lagos University Teaching Hospital",
-      excerpt: "Expanding access to specialized SCD care and research opportunities for African communities.",
-      date: "March 10, 2025",
-      image: "https://images.pexels.com/photos/6303773/pexels-photo-6303773.jpeg?auto=compress&cs=tinysrgb&w=800"
-    },
-    {
-      title: "Awareness Campaign Reaches 10,000 Students",
-      excerpt: "Educational programs in Nigerian schools help prevent discrimination and promote understanding.",
-      date: "March 5, 2025",
-      image: "https://images.pexels.com/photos/8923181/pexels-photo-8923181.jpeg?auto=compress&cs=tinysrgb&w=800"
-    }
-  ];
-
   return (
     <div className="animate-fade-in">
       {/* Hero Section */}
@@ -99,14 +102,10 @@ export const Home: React.FC = () => {
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-slide-up">
-            For the Warriors
+            Welcome to
             <br />
-            <span className="text-google-yellow">Still Fighting</span>
+            <span className="text-google-yellow">Salfar Sickle Aid Initiative</span>
           </h1>
-          <p className="text-xl md:text-2xl text-white mb-8 max-w-3xl mx-auto animate-slide-up">
-            Supporting individuals affected by Sickle Cell Disease across Nigeria with 
-            medical aid, awareness programs, and unwavering advocacy.
-          </p>
           
           {/* Quick Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 animate-slide-up">
@@ -115,7 +114,7 @@ export const Home: React.FC = () => {
               className="bg-white text-google-red px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center space-x-2"
             >
               <UserPlus className="h-5 w-5" />
-              <span>Register New Warrior</span>
+              <span>Register as a Warrior</span>
             </Link>
             <Link
               to="/dp-creator"
@@ -163,8 +162,107 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Data Visualization Section */}
+      {/* Welcome Message */}
       <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8">Welcome Message</h2>
+          </div>
+          
+          <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+            <ExpandableText>
+              <p className="mb-6">
+                At Salfar Sickle Aid Initiative (SSAI), we believe that every individual living with Sickle Cell Disease (SCD) deserves not just survival but the right to thrive with dignity, opportunity, and inclusion.
+              </p>
+              
+              <p className="mb-6">
+                We are more than a nonprofit. We are a movement born from lived experience a vision led by warriors, for warriors. Our mission is to challenge the status quo that too often neglects the voices and needs of people living with SCD. While advocacy on prevention is critical, we recognize the urgent need to support those already living the journey many of whom face daily crises, social exclusion, and financial hardship with very little institutional support.
+              </p>
+              
+              <p className="mb-6 font-semibold text-google-red">
+                Salfar exists to change that narrative.
+              </p>
+              
+              <p className="mb-6">
+                Rooted in empathy and driven by data, our programs are built around nine strategic pillars from health and social support to education, gender inclusion, and economic empowerment. Every initiative we roll out from national data collection to menstrual hygiene webinars and our warrior-centered social protection programs is carefully designed to be practical, inclusive, and impactful.
+              </p>
+              
+              <p className="mb-6">
+                Our vision aligns with the Sustainable Development Goals (SDGs), especially goals on health (SDG 3), gender equality (SDG 5), reduced inequalities (SDG 10), and decent work and economic growth (SDG 8). But beyond global goals, our heartbeat is simple: no warrior should be left behind.
+              </p>
+              
+              <p className="mb-6">
+                We are a team of Sickle Cell Warriors, caregivers, professionals, and volunteers united by a common passion to build systems that work for the most vulnerable. We are not working for sympathy; we are working for structural change, for equity, and for hope.
+              </p>
+              
+              <p className="mb-6">
+                Whether you are a warrior, a caregiver, a donor, a policymaker, or a supporter, welcome.
+                We invite you to walk this journey with us.
+              </p>
+              
+              <p className="mb-6 font-semibold">
+                Because at Salfar, we are not just raising awareness.
+                We are raising champions.
+              </p>
+              
+              <p className="text-google-red font-semibold italic">
+                For the Warriors Still Fighting,
+              </p>
+            </ExpandableText>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission and Vision */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="bg-white rounded-lg p-8 shadow-lg">
+              <div className="bg-google-red p-4 rounded-full w-fit mx-auto mb-6">
+                <Heart className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Mission</h2>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                To support and empower Sickle Cell warriors, especially the underserved, through access to healthcare, education, skill acquisition, psychosocial support, and inclusive advocacy—creating sustainable solutions for their wellbeing and independence.
+              </p>
+            </div>
+
+            <div className="bg-white rounded-lg p-8 shadow-lg">
+              <div className="bg-google-orange p-4 rounded-full w-fit mx-auto mb-6">
+                <TrendingUp className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Vision</h2>
+              <p className="text-gray-700 text-lg leading-relaxed">
+                A Nigeria where every person living with Sickle Cell Disease lives a healthy, empowered, and dignified life—free from discrimination, poverty, and isolation.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About Us */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-gray-900 mb-8">About Us</h2>
+          </div>
+          
+          <div className="prose prose-lg max-w-none text-gray-700 leading-relaxed">
+            <ExpandableText>
+              <p className="mb-6">
+                Sickle Cell Disease (SCD) remains one of the most prevalent and neglected genetic disorders in Nigeria, with an estimated 150,000 children born annually with the condition. Despite the public health crisis it represents, most interventions focus solely on genotype awareness and advocacy against incompatible marriages. Little attention is paid to those already living with the condition SCD warriors who face immense challenges such as poverty, limited access to healthcare, social stigma, educational barriers, and economic exclusion.
+              </p>
+              
+              <p className="mb-6">
+                Salfar Sickle Aid Initiative was born out of the passion to change this narrative established in memory of Salma, a dear friend of the founder who passed away from complications of SCD in 2017. The NGO is committed to supporting sickle cell warriors through healthcare access, education, skills development, economic empowerment, and psychosocial support.
+              </p>
+            </ExpandableText>
+          </div>
+        </div>
+      </section>
+
+      {/* Data Visualization Section */}
+      <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <div className="flex items-center justify-center space-x-2 mb-4">
@@ -260,7 +358,7 @@ export const Home: React.FC = () => {
             {/* Legend and Summary */}
             <div className="space-y-6">
               {/* State Legend */}
-              <div className="bg-gray-50 rounded-2xl p-6">
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
                 <h3 className="text-xl font-bold text-gray-900 mb-4">States Breakdown</h3>
                 <div className="space-y-3">
                   {stateData.map((state, index) => {
@@ -268,7 +366,7 @@ export const Home: React.FC = () => {
                     return (
                       <div 
                         key={index} 
-                        className={`flex items-center justify-between p-3 bg-white rounded-lg hover:shadow-md transition-all cursor-pointer ${
+                        className={`flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:shadow-md transition-all cursor-pointer ${
                           hoveredState === state.state ? 'ring-2 ring-gray-300 shadow-md transform scale-105' : ''
                         }`}
                         onMouseEnter={() => setHoveredState(state.state)}
@@ -291,31 +389,6 @@ export const Home: React.FC = () => {
                 </div>
               </div>
 
-              {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-google-red to-red-600 rounded-xl p-4 text-white">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Heart className="h-5 w-5" />
-                    <h4 className="font-bold">In Poverty</h4>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {stateData.reduce((sum, state) => sum + state.underPoverty, 0).toLocaleString()}
-                  </div>
-                  <p className="text-red-100 text-sm">Under $1/day</p>
-                </div>
-
-                <div className="bg-gradient-to-br from-google-green to-green-600 rounded-xl p-4 text-white">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <TrendingUp className="h-5 w-5" />
-                    <h4 className="font-bold">Avg. Poverty</h4>
-                  </div>
-                  <div className="text-2xl font-bold">
-                    {Math.round(stateData.reduce((sum, state) => sum + state.percentage, 0) / stateData.length)}%
-                  </div>
-                  <p className="text-green-100 text-sm">Across states</p>
-                </div>
-              </div>
-
               <Link 
                 to="/data-center"
                 className="block bg-gray-900 hover:bg-gray-800 rounded-xl p-4 text-white transition-colors group"
@@ -333,96 +406,10 @@ export const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Mission Overview */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Mission</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              We are dedicated to improving the lives of individuals affected by Sickle Cell Disease 
-              through comprehensive support, advocacy, and community building across Nigeria.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="bg-white rounded-lg p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="bg-google-red p-3 rounded-full w-fit mb-6">
-                <Shield className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Medical Support</h3>
-              <p className="text-gray-600">
-                Providing access to essential medical care, medications, and specialized treatment 
-                for SCD warriors across Nigeria.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="bg-google-orange p-3 rounded-full w-fit mb-6">
-                <Users className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Community Building</h3>
-              <p className="text-gray-600">
-                Creating strong support networks and communities where SCD warriors can connect, 
-                share experiences, and find strength together.
-              </p>
-            </div>
-
-            <div className="bg-white rounded-lg p-8 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="bg-google-green p-3 rounded-full w-fit mb-6">
-                <TrendingUp className="h-8 w-8 text-white" />
-              </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-4">Advocacy & Awareness</h3>
-              <p className="text-gray-600">
-                Raising awareness about SCD, fighting discrimination, and advocating for policy 
-                changes that benefit the SCD community.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Stories */}
-      <section className="py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Latest Updates</h2>
-            <p className="text-xl text-gray-600">
-              Stay informed about our ongoing programs and impact in communities across Nigeria.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {featuredStories.map((story, index) => (
-              <article key={index} className="bg-white rounded-lg overflow-hidden shadow-lg hover:shadow-xl transition-shadow">
-                <img 
-                  src={story.image} 
-                  alt={story.title}
-                  className="w-full h-48 object-cover"
-                />
-                <div className="p-6">
-                  <div className="flex items-center text-gray-500 text-sm mb-2">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    {story.date}
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-3">{story.title}</h3>
-                  <p className="text-gray-600 mb-4">{story.excerpt}</p>
-                  <Link 
-                    to="/programs" 
-                    className="text-google-red font-semibold hover:text-google-orange transition-colors"
-                  >
-                    Read More →
-                  </Link>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Call to Action */}
       <section className="py-20 bg-google-red">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold text-white mb-6">Join the Fight</h2>
+          <h2 className="text-4xl font-bold text-white mb-6">Join Us</h2>
           <p className="text-xl text-white mb-8">
             Every warrior deserves support. Every voice matters. Every action counts.
             Join us in making a difference in the lives of SCD warriors across Nigeria.
