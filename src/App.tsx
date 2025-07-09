@@ -9,6 +9,7 @@ import { AnnualReports } from './pages/AnnualReports';
 import { GetInvolved } from './pages/GetInvolved';
 import { ContactUs } from './pages/ContactUs';
 import { DPCreator } from './pages/DPCreator';
+import { Team } from './pages/Team';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/get-involved" element={<GetInvolved />} />
           <Route path="/contact" element={<ContactUs />} />
           <Route path="/dp-creator" element={<DPCreator />} />
+          <Route path="/team" element={<Team />} />
         </Routes>
       </Layout>
     </Router>
