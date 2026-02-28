@@ -8,12 +8,12 @@ export const DataCenter: React.FC = () => {
 
   // Mock data for demonstration
   const stateData = [
-    { state: 'Lagos', warriors: 487, underPoverty: 312, percentage: 64 },
-    { state: 'Kano', warriors: 356, underPoverty: 289, percentage: 81 },
-    { state: 'Rivers', warriors: 298, underPoverty: 187, percentage: 63 },
-    { state: 'Oyo', warriors: 245, underPoverty: 156, percentage: 64 },
-    { state: 'Kaduna', warriors: 234, underPoverty: 198, percentage: 85 },
-    { state: 'Abuja', warriors: 189, underPoverty: 98, percentage: 52 },
+    { state: 'Lagos', warriors: 0, underPoverty: 0, percentage: 0 },
+    { state: 'Kano', warriors: 0, underPoverty: 0, percentage: 0 },
+    { state: 'Rivers', warriors: 0, underPoverty: 0, percentage: 0 },
+    { state: 'Oyo', warriors: 0, underPoverty: 0, percentage: 0 },
+    { state: 'Kaduna', warriors: 0, underPoverty: 0, percentage: 0 },
+    { state: 'Abuja', warriors: 0, underPoverty: 0, percentage: 0 },
   ];
 
   const warriorsList = [
@@ -57,7 +57,7 @@ export const DataCenter: React.FC = () => {
     });
   };
 
-  const filteredWarriors = warriorsList.filter(warrior => 
+  const filteredWarriors = warriorsList.filter(warrior =>
     warrior.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
     (selectedState === 'all' || warrior.state === selectedState)
   );
@@ -69,7 +69,7 @@ export const DataCenter: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-5xl font-bold text-white mb-6">Data Center</h1>
           <p className="text-xl text-white max-w-3xl mx-auto">
-            Comprehensive data management and analytics platform for tracking and supporting 
+            Comprehensive data management and analytics platform for tracking and supporting
             SCD warriors across Nigeria.
           </p>
         </div>
@@ -81,11 +81,10 @@ export const DataCenter: React.FC = () => {
           <div className="flex space-x-8">
             <button
               onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'dashboard'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'dashboard'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-4 w-4" />
@@ -94,11 +93,10 @@ export const DataCenter: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('register')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'register'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'register'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <Upload className="h-4 w-4" />
@@ -107,11 +105,10 @@ export const DataCenter: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('warriors')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'warriors'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'warriors'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <Database className="h-4 w-4" />
@@ -134,7 +131,7 @@ export const DataCenter: React.FC = () => {
                     <Users className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">2,847</p>
+                    <p className="text-2xl font-bold text-gray-900">0</p>
                     <p className="text-gray-600">Total Warriors</p>
                   </div>
                 </div>
@@ -146,7 +143,7 @@ export const DataCenter: React.FC = () => {
                     <TrendingUp className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">1,923</p>
+                    <p className="text-2xl font-bold text-gray-900">0</p>
                     <p className="text-gray-600">Under $1/Day</p>
                   </div>
                 </div>
@@ -158,7 +155,7 @@ export const DataCenter: React.FC = () => {
                     <MapPin className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">28</p>
+                    <p className="text-2xl font-bold text-gray-900">0</p>
                     <p className="text-gray-600">States Covered</p>
                   </div>
                 </div>
@@ -170,7 +167,7 @@ export const DataCenter: React.FC = () => {
                     <Database className="h-6 w-6 text-white" />
                   </div>
                   <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">67.5%</p>
+                    <p className="text-2xl font-bold text-gray-900">0%</p>
                     <p className="text-gray-600">Poverty Rate</p>
                   </div>
                 </div>
@@ -215,8 +212,8 @@ export const DataCenter: React.FC = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <div className="flex items-center">
                             <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                              <div 
-                                className="bg-google-red h-2 rounded-full" 
+                              <div
+                                className="bg-google-red h-2 rounded-full"
                                 style={{ width: `${state.percentage}%` }}
                               ></div>
                             </div>
@@ -386,7 +383,7 @@ export const DataCenter: React.FC = () => {
               <div className="px-6 py-4 border-b border-gray-200">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 md:mb-0">Warriors Database</h3>
-                  
+
                   <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -398,7 +395,7 @@ export const DataCenter: React.FC = () => {
                         className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
                       />
                     </div>
-                    
+
                     <select
                       value={selectedState}
                       onChange={(e) => setSelectedState(e.target.value)}
@@ -457,11 +454,10 @@ export const DataCenter: React.FC = () => {
                           {warrior.age}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            warrior.underPoverty 
-                              ? 'bg-red-100 text-red-800' 
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${warrior.underPoverty
+                              ? 'bg-red-100 text-red-800'
                               : 'bg-green-100 text-green-800'
-                          }`}>
+                            }`}>
                             {warrior.underPoverty ? 'Under $1/day' : 'Above $1/day'}
                           </span>
                         </td>

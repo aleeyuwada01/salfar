@@ -5,22 +5,22 @@ import { ExpandableText } from '../components/ExpandableText';
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
-    totalWarriors: 2847,
-    warriorsInPoverty: 1923,
-    statesCovered: 28,
-    programsActive: 8
+    totalWarriors: 0,
+    warriorsInPoverty: 0,
+    statesCovered: 0,
+    programsActive: 0
   });
 
   const [hoveredState, setHoveredState] = useState<string | null>(null);
 
   // State-wise data for visualization
   const stateData = [
-    { state: 'Lagos', warriors: 487, underPoverty: 312, percentage: 64, color: '#EA4335' },
-    { state: 'Kano', warriors: 356, underPoverty: 289, percentage: 81, color: '#FB8C00' },
-    { state: 'Rivers', warriors: 298, underPoverty: 187, percentage: 63, color: '#34A853' },
-    { state: 'Oyo', warriors: 245, underPoverty: 156, percentage: 64, color: '#4285F4' },
-    { state: 'Kaduna', warriors: 234, underPoverty: 198, percentage: 85, color: '#FBBC04' },
-    { state: 'Abuja', warriors: 189, underPoverty: 98, percentage: 52, color: '#9C27B0' },
+    { state: 'Lagos', warriors: 0, underPoverty: 0, percentage: 0, color: '#EA4335' },
+    { state: 'Kano', warriors: 0, underPoverty: 0, percentage: 0, color: '#FB8C00' },
+    { state: 'Rivers', warriors: 0, underPoverty: 0, percentage: 0, color: '#34A853' },
+    { state: 'Oyo', warriors: 0, underPoverty: 0, percentage: 0, color: '#4285F4' },
+    { state: 'Kaduna', warriors: 0, underPoverty: 0, percentage: 0, color: '#FBBC04' },
+    { state: 'Abuja', warriors: 0, underPoverty: 0, percentage: 0, color: '#9C27B0' },
   ];
 
   // Calculate pie chart data
@@ -28,6 +28,7 @@ export const Home: React.FC = () => {
   
   const createPieSlice = (data: any[], index: number) => {
     const total = data.reduce((sum, item) => sum + item.warriors, 0);
+    if (total === 0) return { pathData: '', percentage: 0 };
     const percentage = (data[index].warriors / total) * 100;
     
     // Calculate cumulative percentage up to this slice

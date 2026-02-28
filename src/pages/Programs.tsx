@@ -110,10 +110,10 @@ export const Programs: React.FC = () => {
   ];
 
   const impactStats = [
-    { number: "2,847", label: "Warriors Supported", icon: Heart },
-    { number: "28", label: "States Reached", icon: Shield },
-    { number: "156", label: "Support Groups", icon: Users },
-    { number: "8", label: "Active Programs", icon: BookOpen }
+    { number: "0", label: "Warriors Supported", icon: Heart },
+    { number: "0", label: "States Reached", icon: Shield },
+    { number: "0", label: "Support Groups", icon: Users },
+    { number: "0", label: "Active Programs", icon: BookOpen }
   ];
 
   return (
@@ -123,7 +123,7 @@ export const Programs: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-5xl font-bold text-white mb-6">Our Programs</h1>
           <p className="text-xl text-white max-w-3xl mx-auto">
-            Comprehensive initiatives designed to support, educate, and empower 
+            Comprehensive initiatives designed to support, educate, and empower
             SCD warriors across Nigeria through targeted interventions.
           </p>
         </div>
@@ -163,24 +163,24 @@ export const Programs: React.FC = () => {
             {programs.map((program, index) => {
               const IconComponent = program.icon;
               const isEven = index % 2 === 0;
-              
+
               return (
                 <div key={index} className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center ${!isEven ? 'lg:grid-flow-col-dense' : ''}`}>
                   <div className={isEven ? 'lg:order-1' : 'lg:order-2'}>
-                    <img 
-                      src={program.image} 
+                    <img
+                      src={program.image}
                       alt={program.title}
                       className="rounded-lg shadow-lg w-full h-80 object-cover"
                     />
                   </div>
-                  
+
                   <div className={isEven ? 'lg:order-2' : 'lg:order-1'}>
                     <div className={`${program.color} p-3 rounded-full w-fit mb-6`}>
                       <IconComponent className="h-8 w-8 text-white" />
                     </div>
                     <h3 className="text-3xl font-bold text-gray-900 mb-4">{program.title}</h3>
                     <p className="text-gray-600 text-lg mb-6">{program.description}</p>
-                    
+
                     <div className="space-y-3">
                       <h4 className="font-semibold text-gray-900 mb-3">Key Features:</h4>
                       {program.features.map((feature, featureIndex) => (
@@ -211,14 +211,14 @@ export const Programs: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div className="bg-gray-50 rounded-lg p-8">
               <div className="mb-6">
-                <img 
+                <img
                   src="https://images.pexels.com/photos/5327580/pexels-photo-5327580.jpeg?auto=compress&cs=tinysrgb&w=400"
                   alt="Success story"
                   className="w-16 h-16 rounded-full object-cover"
                 />
               </div>
               <p className="text-gray-600 mb-4 italic">
-                "The Scholar Warrior Program helped me complete my university education. 
+                "The Scholar Warrior Program helped me complete my university education.
                 Now I'm a teacher inspiring other young warriors to pursue their dreams."
               </p>
               <div className="text-sm">
@@ -229,14 +229,14 @@ export const Programs: React.FC = () => {
 
             <div className="bg-gray-50 rounded-lg p-8">
               <div className="mb-6">
-                <img 
+                <img
                   src="https://images.pexels.com/photos/5327647/pexels-photo-5327647.jpeg?auto=compress&cs=tinysrgb&w=400"
                   alt="Success story"
                   className="w-16 h-16 rounded-full object-cover"
                 />
               </div>
               <p className="text-gray-600 mb-4 italic">
-                "Through the SkillUp Warriors Initiative, I learned digital marketing. 
+                "Through the SkillUp Warriors Initiative, I learned digital marketing.
                 I now run my own online business and support my family."
               </p>
               <div className="text-sm">
@@ -247,14 +247,14 @@ export const Programs: React.FC = () => {
 
             <div className="bg-gray-50 rounded-lg p-8">
               <div className="mb-6">
-                <img 
+                <img
                   src="https://images.pexels.com/photos/5327590/pexels-photo-5327590.jpeg?auto=compress&cs=tinysrgb&w=400"
                   alt="Success story"
                   className="w-16 h-16 rounded-full object-cover"
                 />
               </div>
               <p className="text-gray-600 mb-4 italic">
-                "The SafeNet Support Program saved my life during a crisis. 
+                "The SafeNet Support Program saved my life during a crisis.
                 The emergency medical funding helped me get the treatment I needed."
               </p>
               <div className="text-sm">
@@ -271,7 +271,7 @@ export const Programs: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-white mb-6">Join Our Programs</h2>
           <p className="text-xl text-white mb-8">
-            Whether you're a warrior seeking support or someone who wants to make a difference, 
+            Whether you're a warrior seeking support or someone who wants to make a difference,
             there's a place for you in our programs.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
