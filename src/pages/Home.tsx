@@ -125,7 +125,7 @@ export const Home: React.FC = () => {
           {/* Quick Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 animate-slide-up">
             <Link
-              to="/data-center"
+              to="/register"
               className="bg-white text-google-red px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition-all transform hover:scale-105 flex items-center space-x-2"
             >
               <UserPlus className="h-5 w-5" />

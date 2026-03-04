@@ -26,6 +26,7 @@ import { ContentManager } from './pages/Admin/ContentManager';
 import { GalleryManager } from './pages/Admin/GalleryManager';
 import { WarriorRegister } from './pages/Admin/WarriorRegister';
 import { WarriorDatabase } from './pages/Admin/WarriorDatabase';
+import { PublicWarriorRegister } from './pages/PublicWarriorRegister';
 
 function App() {
   return (
@@ -95,7 +96,7 @@ function App() {
             <Route path="/academy" element={<AcademyHome />} />
             <Route path="/academy/apply" element={<AcademyApplication />} />
             <Route path="/apply" element={<AcademyApplication />} />
-            <Route path="/register" element={<DataCenter />} />
+            <Route path="/register" element={<PublicWarriorRegister />} />
             <Route path="/academy/login" element={<AcademyLogin />} />
             <Route path="/academy/enroll" element={<Enrollment />} />
             <Route
