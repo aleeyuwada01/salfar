@@ -21,8 +21,11 @@ import { Enrollment } from './pages/Academy/Enrollment';
 import { Gallery } from './pages/Gallery';
 import { Articles } from './pages/Media/Articles';
 import { Publications } from './pages/Media/Publications';
+import { ArticleDetail } from './pages/Media/ArticleDetail';
 import { ContentManager } from './pages/Admin/ContentManager';
 import { GalleryManager } from './pages/Admin/GalleryManager';
+import { WarriorRegister } from './pages/Admin/WarriorRegister';
+import { WarriorDatabase } from './pages/Admin/WarriorDatabase';
 
 function App() {
   return (
@@ -41,6 +44,7 @@ function App() {
 
             {/* Media & Gallery Routes */}
             <Route path="/media/articles" element={<Articles />} />
+            <Route path="/media/articles/:slug" element={<ArticleDetail />} />
             <Route path="/media/newsletters" element={<Publications category="newsletter" />} />
             <Route path="/media/press-releases" element={<Publications category="press_release" />} />
             <Route path="/gallery" element={<Gallery />} />
@@ -70,10 +74,28 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin/scd-register"
+              element={
+                <ProtectedRoute>
+                  <WarriorRegister />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/warriors"
+              element={
+                <ProtectedRoute>
+                  <WarriorDatabase />
+                </ProtectedRoute>
+              }
+            />
 
-            {/* Academy Routes */}
+            {/* Academy Routes - Fellowship Application */}
             <Route path="/academy" element={<AcademyHome />} />
             <Route path="/academy/apply" element={<AcademyApplication />} />
+            <Route path="/apply" element={<AcademyApplication />} />
+            <Route path="/register" element={<DataCenter />} />
             <Route path="/academy/login" element={<AcademyLogin />} />
             <Route path="/academy/enroll" element={<Enrollment />} />
             <Route

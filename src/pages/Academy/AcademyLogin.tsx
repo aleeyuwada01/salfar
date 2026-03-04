@@ -16,15 +16,33 @@ export const AcademyLogin: React.FC = () => {
         setError(null);
 
         try {
-            const { error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             });
 
             if (error) throw error;
+            if (!data.user) throw new Error("No user returned");
+
+            // Fetch user profile to check role
+            const { data: profile } = await supabase
+                .from('fellow_profiles')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+
+            // Use the role from either auth data (if set) or fellow_profiles
+            const isAdmin = profile?.role === 'admin';
 
             // Successfully logged in
-            navigate('/academy/portal');
+            // Use setTimeout to ensure AuthContext finishes updating before changing route
+            setTimeout(() => {
+                if (isAdmin) {
+                    navigate('/academy/admin');
+                } else {
+                    navigate('/academy/portal');
+                }
+            }, 100);
 
         } catch (err: any) {
             setError(err.message || 'An error occurred during sign in');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Heart, ChevronDown } from 'lucide-react';
+import { Menu, X, Heart, ChevronDown, GraduationCap } from 'lucide-react';
 
 export const Navigation: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +20,7 @@ export const Navigation: React.FC = () => {
       label: 'Initiatives',
       children: [
         { path: '/programs', label: 'Core Programs' },
-        { path: '/academy', label: 'Warriors Academy' },
+        { path: '/academy', label: 'Lead Warriors Academy' },
         { path: '/dp-creator', label: 'DP Creator' },
       ]
     },
@@ -113,6 +113,16 @@ export const Navigation: React.FC = () => {
         {isOpen && (
           <div className="lg:hidden bg-white border-t border-gray-200 shadow-xl absolute w-full left-0 z-50">
             <div className="px-4 pt-4 pb-6 space-y-2 bg-white max-h-[80vh] overflow-y-auto">
+              {/* Direct Academy Link for Mobile - High Visibility */}
+              <Link
+                to="/academy"
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-3 mb-4 rounded-xl text-base font-black bg-indigo-600 text-white shadow-lg shadow-indigo-100 flex items-center justify-center animate-pulse-slow"
+              >
+                <GraduationCap className="h-5 w-5 mr-2" />
+                Join Lead Warriors Academy
+              </Link>
+
               {navItems.map((item) => {
                 if (item.children) {
                   return (

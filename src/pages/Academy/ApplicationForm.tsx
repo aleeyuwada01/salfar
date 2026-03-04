@@ -29,8 +29,41 @@ export const AcademyApplication: React.FC = () => {
         // Section 7: Digital Readiness
         hasInternet: '', hasLaptop: '', timeAvailability: '',
         // Section 8: Declaration
-        declarationName: '', declarationDate: ''
+        declarationName: '', declarationDate: '',
+        cvUrl: ''
     });
+
+    const [uploadingCv, setUploadingCv] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleCvUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validation
+        if (file.size > 2 * 1024 * 1024) {
+            alert("File size should not exceed 2MB");
+            return;
+        }
+
+        setUploadingCv(true);
+        try {
+            const timestamp = Date.now();
+            const fileName = `cv-${timestamp}-${file.name.replace(/\s+/g, '-')}`;
+            const path = `cvs/${fileName}`;
+
+            const { uploadFile } = await import('../../lib/storage');
+            const publicUrl = await uploadFile('academy-docs', path, file);
+
+            setFormData(prev => ({ ...prev, cvUrl: publicUrl }));
+            alert("CV uploaded successfully!");
+        } catch (error: any) {
+            console.error("Upload error:", error);
+            alert("Upload failed: " + error.message);
+        } finally {
+            setUploadingCv(false);
+        }
+    };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -83,7 +116,8 @@ export const AcademyApplication: React.FC = () => {
                 time_availability: formData.timeAvailability,
 
                 declaration_name: formData.declarationName,
-                declaration_date: formData.declarationDate
+                declaration_date: formData.declarationDate,
+                cv_url: formData.cvUrl
             };
 
             const { error } = await supabase
@@ -379,10 +413,33 @@ export const AcademyApplication: React.FC = () => {
 
                                 <div>
                                     <h3 className="text-2xl font-bold text-gray-900 border-b pb-2 mb-6">Document Uploads</h3>
-                                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:bg-gray-100 transition-colors">
-                                        <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                                        <p className="text-gray-700 font-medium">Click here to upload your documents</p>
-                                        <p className="text-sm text-gray-500 mt-2">Required: CV (Max 2 pages). <br />Note: Selected candidates will later be asked for ID card, Academic Certificate, and Hospital ID.</p>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        onChange={handleCvUpload}
+                                        accept=".pdf,.doc,.docx"
+                                        className="hidden"
+                                    />
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className={`bg-gray-50 border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-gray-100 transition-colors ${formData.cvUrl ? 'border-google-green bg-green-50' : 'border-gray-300'
+                                            }`}
+                                    >
+                                        {uploadingCv ? (
+                                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600 mx-auto"></div>
+                                        ) : formData.cvUrl ? (
+                                            <>
+                                                <CheckCircle2 className="h-12 w-12 text-google-green mx-auto mb-4" />
+                                                <p className="text-google-green font-bold text-lg">CV Uploaded Successfully!</p>
+                                                <p className="text-sm text-gray-500 mt-2">Click to change file</p>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                                                <p className="text-gray-700 font-medium">Click here to upload your CV</p>
+                                                <p className="text-sm text-gray-500 mt-2">Required: CV (Max 2MB, PDF/Word). <br />Note: Selected candidates will later be asked for ID card and Clinical Confirmation.</p>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 

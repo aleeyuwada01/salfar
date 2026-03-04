@@ -19,7 +19,7 @@ export const Footer: React.FC = () => {
               </div>
             </div>
             <p className="text-gray-300 mb-6 max-w-md">
-              Supporting SCD warriors across Nigeria with medical aid, awareness programs, and advocacy initiatives. 
+              Supporting SCD warriors across Nigeria with medical aid, awareness programs, and advocacy initiatives.
               Together, we fight for those still fighting.
             </p>
             <div className="flex space-x-4">
@@ -60,11 +60,11 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4 text-google-red" />
-                <span className="text-gray-300">+234 800 SALFAR</span>
+                <span className="text-gray-300">+2349061550304</span>
               </div>
               <div className="flex items-start space-x-2">
                 <MapPin className="h-4 w-4 text-google-red mt-1" />
-                <span className="text-gray-300">E18 NPA Quarters, IBB way, Maitama Abuja</span>
+                <span className="text-gray-300">Room 215, Broadfield Hotel, Apo Bridge Abuja</span>
               </div>
             </div>
           </div>
@@ -73,7 +73,7 @@ export const Footer: React.FC = () => {
         {/* Bottom Bar */}
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © 2025 Salfar Sickle Aid Initiative. All rights reserved.
+            © 2026 Salfar Sickle Aid Initiative. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 md:mt-0">
             <Link to="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">

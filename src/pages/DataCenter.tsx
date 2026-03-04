@@ -1,38 +1,90 @@
-import React, { useState } from 'react';
-import { Upload, Users, MapPin, TrendingUp, Database, Search, Filter, Download } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, Users, MapPin, TrendingUp, Database, Search, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export const DataCenter: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState('all');
-
-  // Mock data for demonstration
-  const stateData = [
-    { state: 'Lagos', warriors: 0, underPoverty: 0, percentage: 0 },
-    { state: 'Kano', warriors: 0, underPoverty: 0, percentage: 0 },
-    { state: 'Rivers', warriors: 0, underPoverty: 0, percentage: 0 },
-    { state: 'Oyo', warriors: 0, underPoverty: 0, percentage: 0 },
-    { state: 'Kaduna', warriors: 0, underPoverty: 0, percentage: 0 },
-    { state: 'Abuja', warriors: 0, underPoverty: 0, percentage: 0 },
-  ];
-
-  const warriorsList = [
-    { id: 'W001', name: 'Amina Kano', state: 'Lagos', lga: 'Ikeja', district: 'GRA', age: 24, underPoverty: true },
-    { id: 'W002', name: 'Ibrahim Musa', state: 'Kano', lga: 'Fagge', district: 'Sabon Gari', age: 19, underPoverty: true },
-    { id: 'W003', name: 'Grace Okafor', state: 'Rivers', lga: 'Port Harcourt', district: 'Mile 1', age: 31, underPoverty: false },
-    { id: 'W004', name: 'Ahmed Bello', state: 'Kaduna', lga: 'Chikun', district: 'Gonin Gora', age: 27, underPoverty: true },
-    { id: 'W005', name: 'Fatima Abdullahi', state: 'Abuja', lga: 'Gwagwalada', district: 'Phase 2', age: 22, underPoverty: false },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    total: 0,
+    poverty: 0,
+    states: 0,
+    rate: 0
+  });
+  const [stateStats, setStateStats] = useState<any[]>([]);
+  const [warriors, setWarriors] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const [formData, setFormData] = useState({
-    fullName: '',
-    dateOfBirth: '',
-    state: '',
+    full_name: '',
+    dob: '',
+    state_residence: '',
     lga: '',
-    district: '',
-    contact: '',
-    livingCondition: ''
+    ward_community: '',
+    phone_primary: '',
+    monthly_income: ''
   });
+
+  useEffect(() => {
+    if (activeTab === 'dashboard' || activeTab === 'warriors') {
+      fetchData();
+    }
+  }, [activeTab]);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch all warriors for counting and listing
+      const { data, error } = await supabase
+        .from('scd_register')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const allWarriors = data || [];
+      setWarriors(allWarriors);
+
+      // Calculate stats
+      const total = allWarriors.length;
+      const poverty = allWarriors.filter(w =>
+        w.monthly_income === 'None' ||
+        w.monthly_income === 'Less than ₦30,000'
+      ).length;
+
+      const uniqueStates = new Set(allWarriors.map(w => w.state_residence).filter(Boolean));
+      const rate = total > 0 ? Math.round((poverty / total) * 100) : 0;
+
+      setStats({ total, poverty, states: uniqueStates.size, rate });
+
+      // State Breakdown
+      const stateMap: Record<string, { warriors: number, poverty: number }> = {};
+      allWarriors.forEach(w => {
+        const s = w.state_residence || 'Unknown';
+        if (!stateMap[s]) stateMap[s] = { warriors: 0, poverty: 0 };
+        stateMap[s].warriors++;
+        if (w.monthly_income === 'None' || w.monthly_income === 'Less than ₦30,000') {
+          stateMap[s].poverty++;
+        }
+      });
+
+      const breakdown = Object.entries(stateMap).map(([state, sStats]) => ({
+        state,
+        warriors: sStats.warriors,
+        underPoverty: sStats.poverty,
+        percentage: sStats.warriors > 0 ? Math.round((sStats.poverty / sStats.warriors) * 100) : 0
+      })).sort((a, b) => b.warriors - a.warriors);
+
+      setStateStats(breakdown);
+    } catch (error) {
+      console.error('Error fetching data center info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
@@ -41,183 +93,155 @@ export const DataCenter: React.FC = () => {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission
-    console.log('Form submitted:', formData);
-    alert('Warrior registration submitted successfully!');
-    setFormData({
-      fullName: '',
-      dateOfBirth: '',
-      state: '',
-      lga: '',
-      district: '',
-      contact: '',
-      livingCondition: ''
-    });
+    setSubmitting(true);
+    setMessage(null);
+
+    try {
+      const { error } = await supabase
+        .from('scd_register')
+        .insert([{
+          full_name: formData.full_name,
+          dob: formData.dob,
+          state_residence: formData.state_residence,
+          lga: formData.lga,
+          ward_community: formData.ward_community,
+          phone_primary: formData.phone_primary,
+          monthly_income: formData.monthly_income,
+          consent_given: true
+        }]);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Warrior registered successfully! Thank you for contributing to the national database.' });
+      setFormData({
+        full_name: '',
+        dob: '',
+        state_residence: '',
+        lga: '',
+        ward_community: '',
+        phone_primary: '',
+        monthly_income: ''
+      });
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to register. Please try again.' });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  const filteredWarriors = warriorsList.filter(warrior =>
-    warrior.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    (selectedState === 'all' || warrior.state === selectedState)
+  const filteredWarriors = warriors.filter(warrior =>
+    (warrior.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      warrior.phone_primary?.includes(searchTerm)) &&
+    (selectedState === 'all' || warrior.state_residence === selectedState)
   );
 
+  const statesList = ['Lagos', 'Kano', 'Rivers', 'Oyo', 'Kaduna', 'Abuja', 'Enugu', 'Edo', 'Delta', 'Anambra', 'Ogun', 'Kwara', 'Plateau', 'Bauchi', 'Katsina', 'Sokoto', 'Gombe', 'Jigawa', 'Kebbi', 'Zamfara', 'Adamawa', 'Taraba', 'Yobe', 'Borno', 'Cross River', 'Akwa Ibom', 'Abia', 'Imo', 'Ebonyi', 'Bayelsa', 'Kogi', 'Nasarawa', 'Benue', 'Ekiti', 'Ondo', 'Osun'];
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in pb-20">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-google-blue to-google-green py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-5xl font-bold text-white mb-6">Data Center</h1>
-          <p className="text-xl text-white max-w-3xl mx-auto">
-            Comprehensive data management and analytics platform for tracking and supporting
-            SCD warriors across Nigeria.
+      <section className="bg-gradient-to-r from-google-blue via-indigo-600 to-google-blue py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6">National Data Center</h1>
+          <p className="text-xl text-white/90 max-w-3xl mx-auto leading-relaxed">
+            A real-time analytics hub driving policy and support for SCD warriors across Nigeria.
+            Every entry helps us advocate for better care and social protection.
           </p>
         </div>
       </section>
 
       {/* Navigation Tabs */}
-      <section className="bg-white border-b">
+      <section className="bg-white sticky top-16 z-20 shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'dashboard'
-                  ? 'border-google-red text-google-red'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4" />
-                <span>Dashboard</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('register')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'register'
-                  ? 'border-google-red text-google-red'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Upload className="h-4 w-4" />
-                <span>Register Warrior</span>
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab('warriors')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'warriors'
-                  ? 'border-google-red text-google-red'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-            >
-              <div className="flex items-center space-x-2">
-                <Database className="h-4 w-4" />
-                <span>Warriors Database</span>
-              </div>
-            </button>
+          <div className="flex justify-center md:justify-start space-x-1 md:space-x-8">
+            {[
+              { id: 'dashboard', icon: <TrendingUp className="h-4 w-4" />, label: 'Analytics' },
+              { id: 'warriors', icon: <Database className="h-4 w-4" />, label: 'Warriors Registry' },
+              { id: 'register', icon: <Upload className="h-4 w-4" />, label: 'New Registration' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-5 px-4 md:px-2 border-b-2 font-bold text-sm transition-all flex items-center space-x-2 ${activeTab === tab.id
+                  ? 'border-google-red text-google-red bg-red-50/10'
+                  : 'border-transparent text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Dashboard Tab */}
-      {activeTab === 'dashboard' && (
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-12 animate-fade-in">
             {/* Key Statistics */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="flex items-center">
-                  <div className="bg-google-red p-3 rounded-full">
-                    <Users className="h-6 w-6 text-white" />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              {[
+                { label: 'Total Warriors', value: stats.total.toLocaleString(), icon: <Users className="text-white h-6 w-6" />, bg: 'bg-google-red' },
+                { label: 'States Reached', value: stats.states, icon: <MapPin className="text-white h-6 w-6" />, bg: 'bg-google-blue' },
+                { label: 'Income Vulnerable', value: stats.poverty, icon: <TrendingUp className="text-white h-6 w-6" />, bg: 'bg-google-orange' },
+                { label: 'Vulnerability Rate', value: `${stats.rate}%`, icon: <Database className="text-white h-6 w-6" />, bg: 'bg-google-green' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100 transform hover:scale-105 transition-transform">
+                  <div className={`${stat.bg} p-4 rounded-2xl w-fit mb-4 shadow-lg shadow-gray-200`}>
+                    {stat.icon}
                   </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">0</p>
-                    <p className="text-gray-600">Total Warriors</p>
-                  </div>
+                  <p className="text-4xl font-black text-gray-900 mb-1">{stat.value}</p>
+                  <p className="text-gray-500 font-bold text-sm tracking-wide uppercase">{stat.label}</p>
                 </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="flex items-center">
-                  <div className="bg-google-orange p-3 rounded-full">
-                    <TrendingUp className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">0</p>
-                    <p className="text-gray-600">Under $1/Day</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="flex items-center">
-                  <div className="bg-google-green p-3 rounded-full">
-                    <MapPin className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">0</p>
-                    <p className="text-gray-600">States Covered</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="flex items-center">
-                  <div className="bg-google-blue p-3 rounded-full">
-                    <Database className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="ml-4">
-                    <p className="text-2xl font-bold text-gray-900">0%</p>
-                    <p className="text-gray-600">Poverty Rate</p>
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* State-wise Data */}
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">State-wise Statistics</h3>
+            <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100">
+              <div className="px-8 py-6 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Geographical Breakdown</h3>
+                <div className="text-xs font-bold text-gray-400 bg-white px-3 py-1 rounded-full border border-gray-200 uppercase tracking-widest">Live Data</div>
               </div>
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full">
+                  <thead className="bg-white border-b border-gray-100">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        State
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Warriors
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Under Poverty
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Poverty Rate
-                      </th>
+                      {['State', 'Total Warriors', 'In Vulnerable Group', 'Vulnerability Rate'].map(h => (
+                        <th key={h} className="px-8 py-5 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {stateData.map((state, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <tbody className="divide-y divide-gray-50 bg-white">
+                    {loading ? (
+                      <tr><td colSpan={4} className="py-20 text-center text-gray-400 font-bold italic">Loading analytics...</td></tr>
+                    ) : stateStats.length === 0 ? (
+                      <tr><td colSpan={4} className="py-20 text-center text-gray-400 font-bold italic">No data records found.</td></tr>
+                    ) : stateStats.map((state, index) => (
+                      <tr key={index} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-8 py-5 whitespace-nowrap text-lg font-black text-gray-900 underline decoration-google-blue/30 underline-offset-4 decoration-2">
                           {state.state}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-8 py-5 whitespace-nowrap text-lg font-bold text-gray-700">
                           {state.warriors}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-8 py-5 whitespace-nowrap text-lg font-bold text-google-orange">
                           {state.underPoverty}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-8 py-5 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                            <div className="w-32 bg-gray-100 rounded-full h-3 mr-4 overflow-hidden border border-gray-100">
                               <div
-                                className="bg-google-red h-2 rounded-full"
+                                className="bg-google-red h-full rounded-full shadow-inner shadow-black/10 font-bold"
                                 style={{ width: `${state.percentage}%` }}
                               ></div>
                             </div>
-                            <span>{state.percentage}%</span>
+                            <span className="font-black text-gray-900">{state.percentage}%</span>
                           </div>
                         </td>
                       </tr>
@@ -227,239 +251,213 @@ export const DataCenter: React.FC = () => {
               </div>
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* Register Warrior Tab */}
-      {activeTab === 'register' && (
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">Register New Warrior</h2>
-                <p className="text-gray-600">
-                  Help us expand our support network by registering SCD warriors in your community.
+        {/* Register Warrior Tab */}
+        {activeTab === 'register' && (
+          <div className="max-w-4xl mx-auto animate-slide-up">
+            <div className="bg-white rounded-[3rem] shadow-2xl p-10 md:p-16 border border-gray-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-google-red/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+
+              <div className="text-center mb-12">
+                <div className="inline-flex p-4 bg-google-red/10 rounded-3xl mb-6">
+                  <Upload className="h-8 w-8 text-google-red" />
+                </div>
+                <h2 className="text-4xl font-black text-gray-900 mb-4">Registry Enrollment</h2>
+                <p className="text-gray-500 font-medium max-w-xl mx-auto">
+                  Contribute to our national mapping project. Your data helps us secure funding and design inclusive programs.
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-2">
-                      Full Name *
-                    </label>
+              {message && (
+                <div className={`mb-10 p-5 rounded-3xl flex items-center space-x-4 animate-scale-up ${message.type === 'success' ? 'bg-green-50 text-green-700 border-2 border-green-100 shadow-lg shadow-green-100' : 'bg-red-50 text-red-700 border-2 border-red-100'}`}>
+                  {message.type === 'success' ? <CheckCircle2 className="h-6 w-6 shrink-0" /> : <AlertCircle className="h-6 w-6 shrink-0" />}
+                  <p className="font-bold">{message.text}</p>
+                  <button onClick={() => setMessage(null)} className="ml-auto p-1 hover:bg-black/5 rounded-full"><XIcon className="h-5 w-5" /></button>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-gray-50/50 p-8 rounded-[2.5rem] border border-gray-100">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
                     <input
                       type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
+                      name="full_name"
+                      value={formData.full_name}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      placeholder="First Middle Surname"
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700 mb-2">
-                      Date of Birth *
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date of Birth</label>
                     <input
                       type="date"
-                      id="dateOfBirth"
-                      name="dateOfBirth"
-                      value={formData.dateOfBirth}
+                      name="dob"
+                      value={formData.dob}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
-                      State *
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">State of Residence</label>
                     <select
-                      id="state"
-                      name="state"
-                      value={formData.state}
+                      name="state_residence"
+                      value={formData.state_residence}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
                     >
                       <option value="">Select State</option>
-                      <option value="Lagos">Lagos</option>
-                      <option value="Kano">Kano</option>
-                      <option value="Rivers">Rivers</option>
-                      <option value="Oyo">Oyo</option>
-                      <option value="Kaduna">Kaduna</option>
-                      <option value="Abuja">Abuja</option>
+                      {statesList.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
 
-                  <div>
-                    <label htmlFor="lga" className="block text-sm font-medium text-gray-700 mb-2">
-                      Local Government Area *
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-[10px) font-black text-gray-400 uppercase tracking-widest ml-1">LGA</label>
                     <input
                       type="text"
-                      id="lga"
                       name="lga"
                       value={formData.lga}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      placeholder="Local Govt Area"
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
                     />
                   </div>
 
-                  <div>
-                    <label htmlFor="district" className="block text-sm font-medium text-gray-700 mb-2">
-                      District/Ward *
-                    </label>
-                    <input
-                      type="text"
-                      id="district"
-                      name="district"
-                      value={formData.district}
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Monthly Income Level</label>
+                    <select
+                      name="monthly_income"
+                      value={formData.monthly_income}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                    />
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
+                    >
+                      <option value="">Select Level</option>
+                      <option value="None">No regular income</option>
+                      <option value="Less than ₦30,000">Less than ₦30,000 (Vulnerable)</option>
+                      <option value="₦30,000 - ₦75,000">₦30,000 - ₦75,000</option>
+                      <option value="Above ₦75,000">Above ₦75,000</option>
+                    </select>
                   </div>
 
-                  <div>
-                    <label htmlFor="contact" className="block text-sm font-medium text-gray-700 mb-2">
-                      Contact Information *
-                    </label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
                     <input
-                      type="text"
-                      id="contact"
-                      name="contact"
-                      value={formData.contact}
+                      type="tel"
+                      name="phone_primary"
+                      value={formData.phone_primary}
                       onChange={handleInputChange}
-                      placeholder="Phone number or email"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      placeholder="080 0000 0000"
+                      className="w-full px-5 py-4 bg-white border-2 border-gray-100 rounded-2xl focus:border-google-blue focus:ring-4 focus:ring-google-blue/10 outline-none transition-all font-bold"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="livingCondition" className="block text-sm font-medium text-gray-700 mb-2">
-                    Living Condition *
-                  </label>
-                  <select
-                    id="livingCondition"
-                    name="livingCondition"
-                    value={formData.livingCondition}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
-                  >
-                    <option value="">Select Living Condition</option>
-                    <option value="under_1_dollar">Living under $1/day</option>
-                    <option value="above_1_dollar">Living above $1/day</option>
-                  </select>
-                </div>
-
-                <div className="text-center">
+                <div className="text-center pt-8">
                   <button
                     type="submit"
-                    className="bg-google-red text-white px-8 py-3 rounded-full font-semibold hover:bg-red-600 transition-colors"
+                    disabled={submitting}
+                    className="bg-gray-900 text-white px-12 py-5 rounded-3xl font-black text-xl hover:bg-black transition-all shadow-2xl shadow-gray-400 hover:scale-105 active:scale-95 disabled:opacity-50 flex items-center justify-center mx-auto"
                   >
-                    Register Warrior
+                    {submitting ? 'Registering...' : 'Complete Registration'}
+                    <ArrowIcon className="ml-3 h-6 w-6" />
                   </button>
+                  <p className="mt-6 text-gray-400 text-xs font-bold uppercase tracking-widest">Secure & Confidential data processing</p>
                 </div>
               </form>
             </div>
           </div>
-        </section>
-      )}
+        )}
 
-      {/* Warriors Database Tab */}
-      {activeTab === 'warriors' && (
-        <section className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-lg shadow-lg">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 md:mb-0">Warriors Database</h3>
+        {/* Warriors Database Tab */}
+        {activeTab === 'warriors' && (
+          <div className="space-y-8 animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 bg-gray-50/20">
+              <div className="px-8 py-8 border-b border-gray-100 bg-white">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div>
+                    <h3 className="text-2xl font-black text-gray-900">Registered Warriors</h3>
+                    <p className="text-gray-500 font-bold text-sm">Public registry database of verified entries.</p>
+                  </div>
 
-                  <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
+                  <div className="flex flex-col sm:flex-row gap-4">
                     <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input
                         type="text"
-                        placeholder="Search warriors..."
+                        placeholder="Search by name or phone..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                        className="pl-12 pr-6 py-3 bg-gray-50 border-2 border-transparent focus:bg-white focus:border-google-blue rounded-2xl outline-none transition-all font-bold text-sm w-full sm:w-64"
                       />
                     </div>
 
                     <select
                       value={selectedState}
                       onChange={(e) => setSelectedState(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-google-red"
+                      className="px-6 py-3 bg-gray-50 border-2 border-transparent rounded-2xl font-black text-sm outline-none focus:bg-white focus:border-google-blue cursor-pointer"
                     >
-                      <option value="all">All States</option>
-                      <option value="Lagos">Lagos</option>
-                      <option value="Kano">Kano</option>
-                      <option value="Rivers">Rivers</option>
-                      <option value="Kaduna">Kaduna</option>
-                      <option value="Abuja">Abuja</option>
+                      <option value="all">Everywhere</option>
+                      {statesList.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-
-                    <button className="flex items-center space-x-2 px-4 py-2 bg-google-green text-white rounded-md hover:bg-green-600 transition-colors">
-                      <Download className="h-4 w-4" />
-                      <span>Export</span>
-                    </button>
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+              <div className="overflow-x-auto p-4 md:p-8">
+                <table className="min-w-full">
+                  <thead>
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        ID
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Location
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Age
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
+                      {['Warrior Identity', 'Region', 'Status', 'Date Joined'].map(h => (
+                        <th key={h} className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredWarriors.map((warrior) => (
-                      <tr key={warrior.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {warrior.id}
+                  <tbody className="divide-y divide-gray-100">
+                    {loading ? (
+                      <tr><td colSpan={4} className="py-20 text-center font-bold text-gray-400 italic">Accessing database...</td></tr>
+                    ) : filteredWarriors.length === 0 ? (
+                      <tr><td colSpan={4} className="py-20 text-center font-bold text-gray-400 italic bg-white rounded-3xl">No records found matching filters.</td></tr>
+                    ) : filteredWarriors.map((warrior) => (
+                      <tr key={warrior.id} className="hover:bg-gray-50/50 transition-all rounded-2xl">
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-12 w-12 rounded-2xl bg-indigo-50 flex items-center justify-center font-black text-indigo-600 text-lg mr-4 border border-indigo-100">
+                              {warrior.full_name?.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="text-lg font-black text-gray-900">{warrior.full_name}</div>
+                              <div className="text-xs font-bold text-gray-400">{warrior.phone_primary?.replace(/.(?=.{4})/g, '*')}</div>
+                            </div>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {warrior.name}
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <div className="flex items-center space-x-2 text-gray-700 font-bold">
+                            <MapPin className="h-4 w-4 text-google-blue" />
+                            <span>{warrior.lga || 'Unknown'}, {warrior.state_residence}</span>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {warrior.district}, {warrior.lga}, {warrior.state}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {warrior.age}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${warrior.underPoverty
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-green-100 text-green-800'
+                        <td className="px-6 py-6 whitespace-nowrap">
+                          <span className={`inline-flex px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-full ${(warrior.monthly_income === 'None' || warrior.monthly_income === 'Less than ₦30,000')
+                            ? 'bg-red-50 text-red-600 border border-red-100'
+                            : 'bg-green-50 text-green-600 border border-green-100'
                             }`}>
-                            {warrior.underPoverty ? 'Under $1/day' : 'Above $1/day'}
+                            {(warrior.monthly_income === 'None' || warrior.monthly_income === 'Less than ₦30,000') ? 'Vulnerable' : 'Stable'}
                           </span>
+                        </td>
+                        <td className="px-6 py-6 whitespace-nowrap text-sm font-bold text-gray-400">
+                          {new Date(warrior.created_at).toLocaleDateString()}
                         </td>
                       </tr>
                     ))}
@@ -468,8 +466,17 @@ export const DataCenter: React.FC = () => {
               </div>
             </div>
           </div>
-        </section>
-      )}
+        )}
+      </main>
     </div>
   );
 };
+
+// UI Components
+const XIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+);
+
+const ArrowIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+);

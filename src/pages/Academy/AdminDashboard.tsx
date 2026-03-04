@@ -1,12 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { CheckCircle, XCircle, Clock, Search, ExternalLink, User, MapPin, GraduationCap, Briefcase, Heart, BookOpen, Laptop, ShieldCheck, X } from 'lucide-react';
-import { Navigate, Link } from 'react-router-dom';
+import { CheckCircle, XCircle, Clock, Search, ExternalLink, User, MapPin, GraduationCap, Briefcase, Heart, BookOpen, Laptop, ShieldCheck, X, TrendingUp, PieChart as PieIcon, BarChart as BarIcon, Users, Activity, FileText } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
+import { AdminLayout } from '../../components/admin/AdminLayout';
+import {
+    ResponsiveContainer,
+    PieChart,
+    Pie,
+    Cell,
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+} from 'recharts';
 
 export const AdminDashboard: React.FC = () => {
     const { user, isLoading: authLoading } = useAuth();
+    const [activeTab, setActiveTab] = useState<'overview' | 'applications'>('overview');
     const [applications, setApplications] = useState<any[]>([]);
+    const [warriors, setWarriors] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
     const [generatingInvite, setGeneratingInvite] = useState<string | null>(null);
@@ -31,7 +47,7 @@ export const AdminDashboard: React.FC = () => {
                     setIsAdmin(false);
                 } else {
                     setIsAdmin(true);
-                    fetchApplications();
+                    fetchData();
                 }
             } catch {
                 setIsAdmin(false);
@@ -41,24 +57,40 @@ export const AdminDashboard: React.FC = () => {
         if (!authLoading) checkAdmin();
     }, [user, authLoading]);
 
-    const fetchApplications = async () => {
-        const { data } = await supabase
-            .from('academy_applications')
-            .select('*')
-            .order('created_at', { ascending: false });
+    const fetchData = async () => {
+        setLoading(true);
+        const [appsRes, warriorsRes] = await Promise.all([
+            supabase.from('academy_applications').select('*').order('created_at', { ascending: false }),
+            supabase.from('scd_register').select('*')
+        ]);
 
-        if (data) setApplications(data);
+        if (appsRes.data) setApplications(appsRes.data);
+        if (warriorsRes.data) setWarriors(warriorsRes.data);
         setLoading(false);
     };
 
+    // Analytics Calculations
+    const genotypeData = [
+        { name: 'HbSS', value: warriors.filter(w => w.genotype === 'HbSS').length, color: '#EA4335' },
+        { name: 'HbSC', value: warriors.filter(w => w.genotype === 'HbSC').length, color: '#FBBC04' },
+        { name: 'HbSβ-Thal', value: warriors.filter(w => w.genotype?.includes('Thalassemia')).length, color: '#4285F4' },
+        { name: 'Other', value: warriors.filter(w => w.genotype === 'Other').length, color: '#34A853' },
+    ].filter(d => d.value > 0);
+
+
+    const stateDistribution = Array.from(new Set(warriors.map(w => w.state_residence)))
+        .map(state => ({
+            name: state,
+            count: warriors.filter(w => w.state_residence === state).length
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
     const handleAdmit = async (application: any) => {
         setGeneratingInvite(application.id);
-
-        // In a real app, you would select the cohort dynamically
         const cohortName = 'Dr. Sani Gwarzo mni Fellowship';
 
         try {
-            // 1. Generate Invite
             const { data: invite, error: inviteError } = await supabase
                 .from('academy_invites')
                 .insert([{
@@ -71,7 +103,6 @@ export const AdminDashboard: React.FC = () => {
 
             if (inviteError) throw inviteError;
 
-            // 2. Update Application Status
             const { error: appError } = await supabase
                 .from('academy_applications')
                 .update({ status: 'accepted' })
@@ -80,12 +111,8 @@ export const AdminDashboard: React.FC = () => {
             if (appError) throw appError;
 
             const inviteLink = `${window.location.origin}/academy/enroll?token=${invite.id}`;
-
-            // Update UI
             setApplications(prev => prev.map(app => app.id === application.id ? { ...app, status: 'accepted' } : app));
-
             alert(`Admitted!\n\nSend this secure enrollment link to ${application.email}:\n\n${inviteLink}`);
-
         } catch (err: any) {
             console.error(err);
             alert('Error admitting candidate: ' + err.message);
@@ -103,58 +130,149 @@ export const AdminDashboard: React.FC = () => {
         }
     };
 
-    if (authLoading || loading) return <div className="p-8 text-center animate-pulse">Loading Admin Dashboard...</div>;
+    if (authLoading || (isAdmin === true && loading)) return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+                <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600 font-medium">Crunching dashboard data...</p>
+            </div>
+        </div>
+    );
+
     if (isAdmin === false) return <Navigate to="/academy/portal" replace />;
 
     return (
-        <div className="min-h-screen bg-gray-50 p-8">
-            <div className="max-w-7xl mx-auto">
-                <div className="mb-8 flex justify-between items-center">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Admissions Dashboard</h1>
-                        <p className="text-gray-600">Review Lead Warriors Academy applications.</p>
+        <AdminLayout title="Admin Command Center">
+            {/* Tab Navigation */}
+            <div className="flex space-x-1 bg-white p-1 rounded-2xl shadow-sm border border-gray-100 mb-8 w-full overflow-x-auto no-scrollbar">
+                <button
+                    onClick={() => setActiveTab('overview')}
+                    className={`flex-1 md:flex-none px-4 md:px-6 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center whitespace-nowrap ${activeTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                >
+                    <TrendingUp size={16} className="mr-2" /> Overview
+                </button>
+                <button
+                    onClick={() => setActiveTab('applications')}
+                    className={`flex-1 md:flex-none px-4 md:px-6 py-2.5 rounded-xl font-bold text-xs md:text-sm transition-all flex items-center justify-center whitespace-nowrap ${activeTab === 'applications' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                >
+                    <Users size={16} className="mr-2" /> Applications
+                </button>
+            </div>
+
+            {activeTab === 'overview' ? (
+                <div className="space-y-8">
+                    {/* Top Stats Cards */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-xl transition-all border-b-4 border-b-blue-500">
+                            <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Warriors</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-gray-900">{warriors.length}</h3>
+                            <div className="mt-4 hidden md:flex items-center text-blue-600 text-[10px] font-bold">
+                                <TrendingUp size={12} className="mr-1" /> Active register
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-xl transition-all border-b-4 border-b-orange-500">
+                            <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Applicants</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-gray-900">{applications.length}</h3>
+                            <div className="mt-4 hidden md:flex items-center text-orange-600 text-[10px] font-bold">
+                                <Clock size={12} className="mr-1" /> {applications.filter(a => a.status === 'pending').length} pending
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-xl transition-all border-b-4 border-b-green-500">
+                            <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Fellows</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-gray-900">{applications.filter(a => a.status === 'accepted').length}</h3>
+                            <div className="mt-4 hidden md:flex items-center text-green-600 text-[10px] font-bold">
+                                <CheckCircle size={12} className="mr-1" /> Accepted
+                            </div>
+                        </div>
+                        <div className="bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-gray-100 group hover:shadow-xl transition-all border-b-4 border-b-indigo-500">
+                            <p className="text-gray-400 text-[10px] md:text-xs font-bold uppercase tracking-wider mb-1">Poverty %</p>
+                            <h3 className="text-2xl md:text-4xl font-black text-gray-900">
+                                {warriors.length > 0 ? Math.round((warriors.filter(w => w.monthly_income === 'Under ₦20,000').length / warriors.length) * 100) : 0}%
+                            </h3>
+                            <div className="mt-4 hidden md:flex items-center text-indigo-600 text-[10px] font-bold">
+                                <Activity size={12} className="mr-1" /> Threshold
+                            </div>
+                        </div>
                     </div>
-                    <div className="bg-indigo-100 text-indigo-800 px-4 py-2 rounded-full font-bold text-sm shadow-sm flex items-center">
-                        <span className="mr-4">Admin Mode</span>
-                        <div className="flex space-x-2">
-                            <Link to="/academy/admin" className="bg-white px-3 py-1 rounded-md text-xs hover:bg-gray-50 transition-colors">Admissions</Link>
-                            <Link to="/admin/content" className="bg-white px-3 py-1 rounded-md text-xs hover:bg-gray-50 transition-colors">Content</Link>
-                            <Link to="/admin/gallery" className="bg-white px-3 py-1 rounded-md text-xs hover:bg-gray-50 transition-colors">Gallery</Link>
+
+                    {/* Charts Row */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Genotype Distribution Pie */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="font-black text-gray-800 flex items-center">
+                                    <PieIcon className="mr-2 text-indigo-500" size={20} /> Genotype Distribution
+                                </h4>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">Register Data</span>
+                            </div>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={genotypeData}
+                                            cx="50%"
+                                            cy="50%"
+                                            innerRadius={60}
+                                            outerRadius={100}
+                                            paddingAngle={5}
+                                            dataKey="value"
+                                        >
+                                            {genotypeData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Legend verticalAlign="bottom" height={36} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Top States Bar */}
+                        <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-8">
+                                <h4 className="font-black text-gray-800 flex items-center">
+                                    <BarIcon className="mr-2 text-indigo-500" size={20} /> Top 5 States (Residency)
+                                </h4>
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full">Warrior Reach</span>
+                            </div>
+                            <div className="h-[300px] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stateDistribution}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '12px', fontWeight: 'bold' }} />
+                                        <YAxis axisLine={false} tickLine={false} style={{ fontSize: '12px' }} />
+                                        <Tooltip
+                                            cursor={{ fill: '#f8fafc' }}
+                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                                        />
+                                        <Bar dataKey="count" fill="#6366f1" radius={[8, 8, 0, 0]} barSize={40} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="text-gray-500 mb-1 font-medium">Total Apps</div>
-                        <div className="text-3xl font-bold text-gray-900">{applications.length}</div>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="text-orange-500 mb-1 font-medium flex items-center"><Clock className="h-4 w-4 mr-1" /> Pending</div>
-                        <div className="text-3xl font-bold text-gray-900">{applications.filter(a => a.status === 'pending').length}</div>
-                    </div>
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <div className="text-green-500 mb-1 font-medium flex items-center"><CheckCircle className="h-4 w-4 mr-1" /> Accepted</div>
-                        <div className="text-3xl font-bold text-gray-900">{applications.filter(a => a.status === 'accepted').length}</div>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <h3 className="font-bold text-gray-900 text-lg">Recent Applications</h3>
+            ) : (
+                /* Applications Table - Same logic as before but wrapped in AdminLayout */
+                <div className="bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="p-8 border-b border-gray-100 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <h3 className="font-black text-gray-900 text-lg">Lead Warrior Academy Inbound</h3>
                         <div className="relative w-full md:w-auto">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input type="text" placeholder="Search names..." className="pl-9 pr-4 py-2 border border-gray-200 rounded-xl text-sm w-full md:w-64 focus:ring-2 focus:ring-indigo-500 transition-all outline-none" />
+                            <input type="text" placeholder="Search applicants..." className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm w-full md:w-64 focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none" />
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="hidden md:block overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-gray-50 text-gray-500 text-[10px] uppercase tracking-widest font-bold">
                                     <th className="px-6 py-4">Applicant</th>
-                                    <th className="px-6 py-4">State</th>
-                                    <th className="px-6 py-4">Qualification</th>
                                     <th className="px-6 py-4 text-center">Status</th>
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
@@ -164,12 +282,10 @@ export const AdminDashboard: React.FC = () => {
                                     <tr key={app.id} className="hover:bg-gray-50 transition-colors group">
                                         <td className="px-6 py-4">
                                             <div className="font-bold text-gray-900">{app.full_name}</div>
-                                            <div className="text-sm text-gray-500">{app.email}</div>
+                                            <div className="text-xs text-gray-400 uppercase font-bold tracking-tighter mt-1">{app.state_residence} • {app.highest_qualification}</div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-700 font-medium">{app.state_residence}</td>
-                                        <td className="px-6 py-4 text-gray-600 italic">{app.highest_qualification}</td>
                                         <td className="px-6 py-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider ${app.status === 'accepted' ? 'bg-green-100 text-green-700 border border-green-200' :
+                                            <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider ${app.status === 'accepted' ? 'bg-green-100 text-green-700 border border-green-200' :
                                                 app.status === 'rejected' ? 'bg-red-100 text-red-700 border border-red-200' :
                                                     'bg-orange-50 text-orange-700 border border-orange-100'
                                                 }`}>
@@ -177,44 +293,78 @@ export const AdminDashboard: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <div className="flex justify-end items-center space-x-3">
+                                            <div className="flex justify-end items-center space-x-2">
                                                 {app.status === 'pending' && (
-                                                    <div className="flex space-x-1">
+                                                    <>
                                                         <button onClick={() => handleReject(app.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all" title="Reject">
                                                             <XCircle className="h-5 w-5" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleAdmit(app)}
                                                             disabled={generatingInvite === app.id}
-                                                            className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-indigo-700 shadow-sm transition-all whitespace-nowrap"
+                                                            className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] hover:bg-indigo-700 shadow-sm transition-all whitespace-nowrap"
                                                         >
                                                             {generatingInvite === app.id ? '...' : 'Admit'}
                                                         </button>
-                                                    </div>
+                                                    </>
                                                 )}
                                                 <button
                                                     onClick={() => setSelectedApp(app)}
-                                                    className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg font-bold text-xs flex items-center transition-all"
+                                                    className="text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg font-bold text-[10px] flex items-center transition-all"
                                                 >
-                                                    View Full <ExternalLink className="h-3.5 w-3.5 ml-1.5" />
+                                                    View <ExternalLink className="h-3 w-3 ml-1" />
                                                 </button>
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
-
-                                {applications.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="px-6 py-12 text-center text-gray-400 text-lg">
-                                            No applications found.
-                                        </td>
-                                    </tr>
-                                )}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Mobile Application Cards */}
+                    <div className="md:hidden divide-y divide-gray-100">
+                        {applications.map((app) => (
+                            <div key={app.id} className="p-6 space-y-4 hover:bg-gray-50 transition-colors">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="font-black text-gray-900 leading-tight">{app.full_name}</div>
+                                        <div className="text-[10px] text-gray-400 font-bold uppercase mt-1">{app.state_residence} • {app.status}</div>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedApp(app)}
+                                        className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"
+                                    >
+                                        <ExternalLink size={18} />
+                                    </button>
+                                </div>
+                                {app.status === 'pending' && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => handleAdmit(app)}
+                                            className="flex-1 bg-indigo-600 text-white py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-indigo-100"
+                                        >
+                                            Admit Candidate
+                                        </button>
+                                        <button
+                                            onClick={() => handleReject(app.id)}
+                                            className="px-4 py-2.5 bg-gray-50 text-gray-400 rounded-xl font-bold text-xs"
+                                        >
+                                            Reject
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {applications.length === 0 && (
+                        <div className="p-12 text-center text-gray-400 font-bold">
+                            No applications found.
+                        </div>
+                    )}
                 </div>
-            </div>
+            )}
 
             {/* Application Detail Modal */}
             {selectedApp && (
@@ -314,9 +464,22 @@ export const AdminDashboard: React.FC = () => {
 
                             {/* Section 7: Digital Readiness */}
                             <section>
-                                <div className="flex items-center space-x-2 text-green-600 font-bold mb-6 text-sm uppercase tracking-widest border-l-4 border-green-600 pl-4">
-                                    <Laptop className="h-4 w-4" />
-                                    <span>Section 7: Digital Readiness</span>
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center space-x-2 text-green-600 font-bold text-sm uppercase tracking-widest border-l-4 border-green-600 pl-4">
+                                        <Laptop className="h-4 w-4" />
+                                        <span>Section 7: Digital Readiness</span>
+                                    </div>
+                                    {selectedApp.cv_url && (
+                                        <a
+                                            href={selectedApp.cv_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center space-x-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                                        >
+                                            <FileText className="h-3.5 w-3.5" />
+                                            <span>View Attached CV</span>
+                                        </a>
+                                    )}
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
                                     <div><label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reliable Internet?</label><p className="text-gray-900 font-bold">{selectedApp.has_internet || 'N/A'}</p></div>
@@ -372,6 +535,6 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                 </div>
             )}
-        </div>
+        </AdminLayout>
     );
 };

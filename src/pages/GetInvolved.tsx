@@ -73,7 +73,7 @@ export const GetInvolved: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-5xl font-bold text-white mb-6">Get Involved</h1>
           <p className="text-xl text-white max-w-3xl mx-auto">
-            Join our mission to support SCD warriors across Nigeria. Every contribution, 
+            Join our mission to support SCD warriors across Nigeria. Every contribution,
             big or small, makes a meaningful difference in someone's life.
           </p>
         </div>
@@ -85,11 +85,10 @@ export const GetInvolved: React.FC = () => {
           <div className="flex space-x-8">
             <button
               onClick={() => setActiveTab('donate')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'donate'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'donate'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <Gift className="h-4 w-4" />
@@ -98,11 +97,10 @@ export const GetInvolved: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('volunteer')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'volunteer'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'volunteer'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <Users className="h-4 w-4" />
@@ -111,11 +109,10 @@ export const GetInvolved: React.FC = () => {
             </button>
             <button
               onClick={() => setActiveTab('partner')}
-              className={`py-4 px-2 border-b-2 font-medium text-sm ${
-                activeTab === 'partner'
+              className={`py-4 px-2 border-b-2 font-medium text-sm ${activeTab === 'partner'
                   ? 'border-google-red text-google-red'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               <div className="flex items-center space-x-2">
                 <Briefcase className="h-4 w-4" />
@@ -146,26 +143,24 @@ export const GetInvolved: React.FC = () => {
                       <div
                         key={index}
                         onClick={() => setDonationAmount(option.amount)}
-                        className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${
-                          donationAmount === option.amount
+                        className={`p-4 border-2 rounded-lg cursor-pointer transition-colors ${donationAmount === option.amount
                             ? 'border-google-red bg-red-50'
                             : 'border-gray-200 hover:border-google-red'
-                        }`}
+                          }`}
                       >
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="text-xl font-bold text-gray-900">₦{parseInt(option.amount).toLocaleString()}</div>
                             <div className="text-gray-600 text-sm mt-1">{option.impact}</div>
                           </div>
-                          <div className={`w-4 h-4 rounded-full border-2 ${
-                            donationAmount === option.amount
+                          <div className={`w-4 h-4 rounded-full border-2 ${donationAmount === option.amount
                               ? 'border-google-red bg-google-red'
                               : 'border-gray-300'
-                          }`}></div>
+                            }`}></div>
                         </div>
                       </div>
                     ))}
-                    
+
                     <div className="p-4 border-2 border-gray-200 rounded-lg">
                       <div className="flex items-center space-x-4">
                         <input
@@ -251,7 +246,7 @@ export const GetInvolved: React.FC = () => {
                   <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                     <h4 className="font-semibold text-gray-900 mb-2">Secure Payment</h4>
                     <p className="text-sm text-gray-600">
-                      Your donation is processed securely through our encrypted payment system. 
+                      Your donation is processed securely through our encrypted payment system.
                       You will receive a receipt via email for tax purposes.
                     </p>
                   </div>
@@ -544,14 +539,14 @@ export const GetInvolved: React.FC = () => {
                 <Phone className="h-6 w-6 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Call Us</h3>
-              <p className="text-gray-600">+234 800 SALFAR</p>
+              <p className="text-gray-600">+2349061550304</p>
             </div>
             <div className="flex flex-col items-center">
               <div className="bg-google-green p-3 rounded-full mb-4">
                 <MapPin className="h-6 w-6 text-white" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Visit Us</h3>
-              <p className="text-gray-600">Lagos, Nigeria</p>
+              <p className="text-gray-600">Room 215, Broadfield Hotel, Apo Bridge Abuja</p>
             </div>
           </div>
         </div>

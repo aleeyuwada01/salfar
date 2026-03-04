@@ -1,5 +1,6 @@
 import React from 'react';
-import { Heart, Users, BookOpen, Shield, Stethoscope, GraduationCap, Megaphone, HandHeart, Database, Award, Target, Zap } from 'lucide-react';
+import { Heart, Users, BookOpen, Shield, Stethoscope, GraduationCap, Megaphone, HandHeart, Database, Award, Target, Zap, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export const Programs: React.FC = () => {
   const programs = [
@@ -83,16 +84,19 @@ export const Programs: React.FC = () => {
     },
     {
       title: "Lead Warriors Academy",
-      description: "Leadership development and capacity building program to empower SCD warriors to become advocates and leaders in their communities.",
+      description: "SSAI's elite fellowship platform designed to transform sickle cell warriors into policy-literate leaders, advocates, and change-makers across Nigeria. Named in honor of distinguished SSAI Board Leaders and late Salma.",
       icon: Target,
-      color: "bg-indigo-500",
+      color: "bg-indigo-600",
       features: [
-        "Leadership training",
-        "Advocacy skills development",
-        "Community organizing",
-        "Public speaking training"
+        "2026 Cohorts: Gwarzo, Shuaib, Kassim, Dunoma Fellowships",
+        "Month 1: Identity, Power & Strategic Advocacy",
+        "Month 2: Governance, Law & Systems Reform",
+        "Month 3: Institutional Influence & Legacy",
+        "Outcomes: Policy-Literate Leaders & Workplace Negotiators"
       ],
-      image: "https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=800"
+      image: "https://images.pexels.com/photos/3184360/pexels-photo-3184360.jpeg?auto=compress&cs=tinysrgb&w=800",
+      link: "/academy",
+      cta: "Explore Fellowship"
     },
     {
       title: "Warrior Blood Shield Project",
@@ -189,6 +193,15 @@ export const Programs: React.FC = () => {
                           <span className="text-gray-600">{feature}</span>
                         </div>
                       ))}
+                      {(program as any).link && (
+                        <Link
+                          to={(program as any).link}
+                          className="mt-8 inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-full font-bold hover:bg-indigo-700 transition-all transform hover:scale-105 shadow-lg shadow-indigo-100"
+                        >
+                          {(program as any).cta || 'Learn More'}
+                          <ArrowRight className="ml-2 h-5 w-5" />
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
